@@ -220,7 +220,7 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
     this->count++;
 }
 
-double TO_GOAL_MAX_MARGIN_SQUARED = 1 * 1;
+double TO_GOAL_MAX_MARGIN_SQUARED = 0.25f;
 
 int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep) {
     //TODO
@@ -234,6 +234,7 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
     while(i < K && anyway_count_i <ANY_WAY_COUNT_MAX)
     {
+	anyway_count_i++;
     	point x_rand = randomState(x_max, x_min, y_max, y_min);
 
 		//double randomPart = min_dist_squared_to_goal / 25;
@@ -254,7 +255,7 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
     	point x_near = x_near_node -> location;
     	
     	int valid = newState(out, x_near, x_rand, MaxStep);
-    	anyway_count_i++;
+    	
 
     	if(valid == 0){
 			continue;
