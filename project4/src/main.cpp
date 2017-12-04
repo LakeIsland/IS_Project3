@@ -36,13 +36,14 @@ double world_y_max;
 int margin = 5;
 int K = 1500;
 double MaxStep = 2;
+
 int waypoint_margin = 22;
 double CAR_TARGET_MAX_SPEED = 1;
 double CAR_TARGET_MIN_SPEED = 1;
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 20;
 
-double PER_BREAK_SEC = 1;
+double PER_BREAK_SEC = 2;
 double BREAK_SEC = 2;
 
 int CONTROL_RATE = 60;
@@ -187,7 +188,7 @@ int main(int argc, char** argv){
 		    	double dy = robot_pose.y - next_goal.y;	    	
 		    	double dist_squared = dx * dx + dy * dy;
 
-			if(dist_squared < 0.04 || (dist_squared < 8 && (dist_squared > last_dist_squared)))
+			if(dist_squared < 0.04)
 		    	{
 				if(!(dist_squared < 0.04)){
 					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
