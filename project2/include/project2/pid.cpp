@@ -5,6 +5,8 @@
 #define THRESHOLD_R 0.2
 #define THRESHOLD_MAX_R 0.6
 
+#define MAX_ROTATE 0.6
+
 PID::PID(){
 
     /* TO DO
@@ -63,7 +65,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 	double dt = 1.0 / 10;
 
 	double error = weight_g * theta_g + weight_d * theta_d - theta_h;
-	error = theta_g - theta_h;
+	// error = theta_g - theta_h;
 	error = clampToPi(error);
 	
 	double prop_term = (this->Kp) * (this -> error);
@@ -86,7 +88,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 	//printf("final_result, %.3f, result :%.3f, alpha: %.3f\n", final_result, result, cur_goal.alpha);
 	printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %3f\n",dx,dy,theta_g,theta_h,error);
 	//printf("pid result :%.3f, alpha: %.3f, error: %.3f\n", result, cur_goal.alpha, error);
-	result = clamp(-1,1,result);
+	result = clamp(-MAX_ROTATE, MAX_ROTATE,result);
 	
 	return result;
 	
