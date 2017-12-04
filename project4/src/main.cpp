@@ -38,8 +38,9 @@ int K = 1500;
 double MaxStep = 2;
 int waypoint_margin = 22;
 double CAR_TARGET_MAX_SPEED = 1;
-double CAR_TARGET_MIN_SPEED = 0.5;
+double CAR_TARGET_MIN_SPEED = 1;
 int MAX_FAIL_NUMBER = 2;
+int ANY_WAY_RESTART_COUNT = 20;
 
 double PER_BREAK_SEC = 1;
 double BREAK_SEC = 2;
@@ -176,7 +177,7 @@ int main(int argc, char** argv){
 			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.2, CAR_TARGET_MIN_SPEED, abs_control);
 			//if(abs_control > steering_max)
 			//	steering_max = abs_control;
-			setcmdvel(1, control);
+			setcmdvel(speed, control);
 		    	cmd_vel_pub.publish(cmd);
 		    	
 		    	ros::spinOnce();
@@ -189,6 +190,7 @@ int main(int argc, char** argv){
 			if(dist_squared < 0.04 || (dist_squared < 8 && (dist_squared > last_dist_squared)))
 		    	{
 				if(!(dist_squared < 0.04)){
+					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
 					toofarcount++;
 				}
 		    		last_dist_squared = DOUBLE_INFINITE;
@@ -196,13 +198,8 @@ int main(int argc, char** argv){
 				pid_ctrl.clear();
 				if(look_ahead_idx == path_RRT.size())
 				{
-					look_ahead_idx = 0;
-					track_count += 1;
-					if(track_count == TRACK_NUMBER)
-					{
-						finish();
-						break;
-					}				
+					finish();
+					break;			
 				}
 		    	}
 			else {
@@ -353,20 +350,16 @@ void create_clock_wise_way_points(cv::Mat map, point start_position)
 
 	printf("set random waypoint started\n");
 	waypoints.push_back(start_position);
-	for(int i=1; i<4; i++)
+	for(int j=0; j<TRACK_NUMBER; j++)
 	{
-		int idx = (i + where) % 4;
-		point _point = find_empty_point(map, xs[idx], ys[idx]);
-		waypoints.push_back(_point);
+		for(int i=1; i<4; i++)
+		{
+			int idx = (i + where) % 4;
+			point _point = find_empty_point(map, xs[idx], ys[idx]);
+			waypoints.push_back(_point);
+		}
+		waypoints.push_back(start_position);
 	}
-	waypoints.push_back(start_position);
-	for(int i=1; i<4; i++)
-	{
-		int idx = (i + where) % 4;
-		point _point = find_empty_point(map, xs[idx], ys[idx]);
-		waypoints.push_back(_point);
-	}
-	waypoints.push_back(start_position);
 
 	//point right_top = find_empty_point(map, 1, 1);
 	//point right_bottom = find_empty_point(map, 1, 0);
@@ -439,18 +432,22 @@ void generate_path_RRT()
      */
 
 	rrtTree* _rrtTree = new rrtTree(map, map_origin_x, map_origin_y, res, margin);
+	std::vector<int> track_sizes;
+	
 	while(true)
 	{
 		path_RRT.clear();
+		track_sizes.clear();
+
 		int goal_number = waypoints.size();
-	
+		int anyway_fail_number = 0;
 		point x_init;
 		x_init.x = waypoints[0].x;
 		x_init.y = waypoints[0].y;
 		x_init.th = waypoints[0].th;
-		int i;
-		
-		for(i = 1; i<goal_number; i++)
+		int i = 1;
+
+		while(i<goal_number)
 		{
 			
 			printf("start Finding %d th path.\n", i);
@@ -462,9 +459,7 @@ void generate_path_RRT()
 			{
 				_rrtTree->clearTree();
 				_rrtTree->setNewPoint(x_init, x_goal);
-
-				
-				printf("%d try for %d path.\n", current_fail_number + 1, i);
+				//printf("%d try for %d path.\n", current_fail_number + 1, i);
 
 				int valid = _rrtTree -> generateRRT(world_x_max, world_x_min, world_y_max, world_y_min, K, MaxStep);
 
@@ -480,6 +475,7 @@ void generate_path_RRT()
 					{
 						path_RRT.push_back(backtrack_traj.at(j));
 					}
+					track_sizes.push_back(size);
 
 					_rrtTree -> visualizeTree(path_RRT);
 		
@@ -488,6 +484,7 @@ void generate_path_RRT()
 					x_init.x = last_traj.x;
 					x_init.y = last_traj.y;
 					x_init.th = last_traj.th;
+					i+=1;
 					//delete _rrtTree;
 					break;
 				}
@@ -495,11 +492,28 @@ void generate_path_RRT()
 				{
 					//delete _rrtTree;
 					current_fail_number += 1;
+					anyway_fail_number += 1;
 				}
 			}
 
 			if(current_fail_number >= MAX_FAIL_NUMBER)
 			{
+				if(i > 2)
+				{
+					i -= 1;
+					int last_size = track_sizes.at(track_sizes.size() - 1);
+					track_sizes.pop_back();
+					for(int j=0; j<last_size; j++){path_RRT.pop_back();}
+
+					traj last_traj = path_RRT.at(path_RRT.size()-1);
+					x_init.x = last_traj.x;
+					x_init.y = last_traj.y;
+					x_init.th = last_traj.th;
+					printf("BACK ONE TRACK!!!!!!!!!!! \n");
+						
+					continue;
+				}
+
 				printf("Failed over %d times!!! Maybe previous path was wrong. Clear all found path and restart path finding!\n", MAX_FAIL_NUMBER);
 				break;
 			}			
