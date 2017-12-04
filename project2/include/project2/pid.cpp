@@ -5,7 +5,7 @@
 #define THRESHOLD_R 0.2
 #define THRESHOLD_MAX_R 0.6
 
-#define MAX_ROTATE 0.6
+#define MAX_ROTATE 0.4
 
 PID::PID(){
 
@@ -18,9 +18,9 @@ PID::PID(){
     error = 0;
     error_sum = 0;
     error_diff = 0;
-    Kp = 1.5;
+    Kp = 0.9;
     Ki = 0;
-    Kd = 5; 
+    Kd = 0; 
 }
 
 void PID::clear()
@@ -62,10 +62,10 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 	//if(weight_g < 1.0f)
 	//	printf("weight_g: %.4f, weight_d: %.4f\n", weight_g, weight_d);
 
-	double dt = 1.0 / 10;
+	double dt = 1.0 / 60;
 
 	double error = weight_g * theta_g + weight_d * theta_d - theta_h;
-	// error = theta_g - theta_h;
+	error = theta_g - theta_h;
 	error = clampToPi(error);
 	
 	double prop_term = (this->Kp) * (this -> error);
@@ -86,7 +86,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 
 	
 	//printf("final_result, %.3f, result :%.3f, alpha: %.3f\n", final_result, result, cur_goal.alpha);
-	printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %3f\n",dx,dy,theta_g,theta_h,error);
+	printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",dx,dy,theta_g,theta_h,error,result);
 	//printf("pid result :%.3f, alpha: %.3f, error: %.3f\n", result, cur_goal.alpha, error);
 	result = clamp(-MAX_ROTATE, MAX_ROTATE,result);
 	
