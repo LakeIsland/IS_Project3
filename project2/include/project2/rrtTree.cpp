@@ -4,7 +4,7 @@
 #include <ros/ros.h>
 
 double MIN_D = 2;
-double max_alpha = 0.2;
+double max_alpha = 0.16;
 double L = 0.325;
 
 rrtTree::rrtTree() {
@@ -220,7 +220,7 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
     this->count++;
 }
 
-double TO_GOAL_MAX_MARGIN_SQUARED = 0.25f;
+double TO_GOAL_MAX_MARGIN_SQUARED = 1.0;
 
 int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep) {
     //TODO
@@ -492,11 +492,11 @@ bool rrtTree::isCollision(point x1, point x2, double d, double R) {
 		
 		if(i<0)
 			return true;
-		if(i>=800)
+		if(i>=this->map.rows)
 			return true;
 		if(j<0)
 			return true;
-		if(j>=800)
+		if(j>=this->map.cols)
 			return true;
 
 		int occupied = this->map.at<uchar>(i,j);
