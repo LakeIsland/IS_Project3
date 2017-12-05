@@ -33,7 +33,7 @@ double world_y_min;
 double world_y_max;
 
 //parameters we should adjust : K, margin, MaxStep
-int margin = 5;
+int margin = 7;
 int K = 1500;
 double MaxStep = 2;
 
@@ -41,7 +41,7 @@ int waypoint_margin = 22;
 double CAR_TARGET_MAX_SPEED = 1;
 double CAR_TARGET_MIN_SPEED = 1;
 int MAX_FAIL_NUMBER = 2;
-int ANY_WAY_RESTART_COUNT = 20;
+int ANY_WAY_RESTART_COUNT = 1000;
 
 double PER_BREAK_SEC = 2;
 double BREAK_SEC = 2;
@@ -188,7 +188,7 @@ int main(int argc, char** argv){
 		    	double dy = robot_pose.y - next_goal.y;	    	
 		    	double dist_squared = dx * dx + dy * dy;
 
-			if(dist_squared < 0.04)
+			if(dist_squared < 0.04 || (last_dist_squared < dist_squared && dist_squared < 8))
 		    	{
 				if(!(dist_squared < 0.04)){
 					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -499,7 +499,7 @@ void generate_path_RRT()
 
 			if(current_fail_number >= MAX_FAIL_NUMBER)
 			{
-				if(i > 2)
+				if(i > 2 && anyway_fail_number < ANY_WAY_RESTART_COUNT)
 				{
 					i -= 1;
 					int last_size = track_sizes.at(track_sizes.size() - 1);
