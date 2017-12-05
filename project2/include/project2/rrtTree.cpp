@@ -3,9 +3,14 @@
 #include <unistd.h>
 #include <ros/ros.h>
 
-double MIN_D = 2;
+double MIN_D = 1;
+double MAX_D = 2;
 double max_alpha = 0.16;
 double L = 0.325;
+
+int RRT_DEBUG = 1;
+double DIRECTION_SEARCH_MARGIN = 2;
+double MIN_LINEAR_LENGTH_TO_ADD = 1;
 
 rrtTree::rrtTree() {
     count = 0;
@@ -124,19 +129,34 @@ void rrtTree::visualizeTree(){
     
     for(int i = 1; i < this->count; i++) {
         idx_parent = this->ptrTable[i]->idx_parent;
-	for(int j = 0; j < 10; j++) {
+		
 	    double alpha = this->ptrTable[i]->alpha;
-	    double d = this->ptrTable[i]->d;
-	    double p1_th = this->ptrTable[idx_parent]->location.th + d*j/10*tan(alpha)/L;
-            double p2_th = this->ptrTable[idx_parent]->location.th + d*(j+1)/10*tan(alpha)/L;
-            double p1_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p1_th) - sin(ptrTable[idx_parent]->location.th));
-	    double p1_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p1_th));
-            double p2_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p2_th) - sin(ptrTable[idx_parent]->location.th));
-	    double p2_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p2_th));
-            x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+		if(alpha == 0)
+		{
+			
+            double p1_x = this->ptrTable[idx_parent]->location.x;
+	    	double p1_y = this->ptrTable[idx_parent]->location.y;
+            double p2_x = this->ptrTable[i]->location.x;
+			double p2_y = this->ptrTable[i]->location.y;
+
+			x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
             x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
             cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
-	}
+		} else {
+			for(int j = 0; j < 10; j++) {
+				double d = this->ptrTable[i]->d;
+				double p1_th = this->ptrTable[idx_parent]->location.th + d*j/10*tan(alpha)/L;
+				double p2_th = this->ptrTable[idx_parent]->location.th + d*(j+1)/10*tan(alpha)/L;
+				double p1_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p1_th) - sin(ptrTable[idx_parent]->location.th));
+				double p1_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p1_th));
+				double p2_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p2_th) - sin(ptrTable[idx_parent]->location.th));
+				double p2_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p2_th));
+				x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+				x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
+				cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
+			}
+		}
+	
     }
     cv::namedWindow("Mapping");
     //cv::Rect imgROI((int)Res*200,(int)Res*200,(int)Res*400,(int)Res*400);
@@ -163,37 +183,74 @@ void rrtTree::visualizeTree(std::vector<traj> path){
     cv::circle(imgResult, cv::Point((int)(Res*(path[path.size()-1].y/res + map_origin_y)), (int)(Res*(path[path.size()-1].x/res + map_origin_x))), radius, cv::Scalar(0, 0, 255), CV_FILLED);
 
     for(int i = 1; i < this->count; i++) {
-        idx_parent = this->ptrTable[i]->idx_parent;
-	for(int j = 0; j < 10; j++) {
-	    double alpha = this->ptrTable[i]->alpha;
-	    double d = this->ptrTable[i]->d;
-	    double p1_th = this->ptrTable[idx_parent]->location.th + d*j/10*tan(alpha)/L;
-            double p2_th = this->ptrTable[idx_parent]->location.th + d*(j+1)/10*tan(alpha)/L;
-            double p1_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p1_th) - sin(ptrTable[idx_parent]->location.th));
-	    double p1_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p1_th));
-            double p2_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p2_th) - sin(ptrTable[idx_parent]->location.th));
-	    double p2_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p2_th));
-            x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+		idx_parent = this->ptrTable[i]->idx_parent;
+        double alpha = this->ptrTable[i]->alpha;
+		double d = this->ptrTable[i]->d;
+
+		if(alpha == 0)
+		{
+			
+            double p1_x = this->ptrTable[idx_parent]->location.x;
+	    	double p1_y = this->ptrTable[idx_parent]->location.y;
+			double p2_x = this->ptrTable[i]->location.x;
+			double p2_y = this->ptrTable[i]->location.y;
+			
+            //double p2_x = p1_x + d* cos(this->ptrTable[idx_parent]->location.th);
+			//double p2_y = p1_y + d* sin(this->ptrTable[idx_parent]->location.th);
+
+			x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
             x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
             cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
-	}
+		} else {
+			for(int j = 0; j < 10; j++) {
+			
+			double p1_th = this->ptrTable[idx_parent]->location.th + d*j/10*tan(alpha)/L;
+		    double p2_th = this->ptrTable[idx_parent]->location.th + d*(j+1)/10*tan(alpha)/L;
+		    double p1_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p1_th) - sin(ptrTable[idx_parent]->location.th));
+			double p1_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p1_th));
+		    double p2_x = this->ptrTable[idx_parent]->location.x + L/tan(alpha)*(sin(p2_th) - sin(ptrTable[idx_parent]->location.th));
+			double p2_y = this->ptrTable[idx_parent]->location.y + L/tan(alpha)*(cos(ptrTable[idx_parent]->location.th) - cos(p2_th));
+		    x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+		    x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
+		    cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
+			}
+		}
+
+	
     }
 
     thickness = 3;
     for(int i = 1; i < path.size(); i++) {
-	for(int j = 0; j < 10; j++) {
-	    double alpha = path[i].alpha;
-	    double d = path[i].d;
-	    double p1_th = path[i-1].th + d*j/10*tan(alpha)/L; // R = L/tan(alpha)
-            double p2_th = path[i-1].th + d*(j+1)/10*tan(alpha)/L;
-            double p1_x = path[i-1].x + L/tan(alpha)*(sin(p1_th) - sin(path[i-1].th));
-	    double p1_y = path[i-1].y + L/tan(alpha)*(cos(path[i-1].th) - cos(p1_th));
-            double p2_x = path[i-1].x + L/tan(alpha)*(sin(p2_th) - sin(path[i-1].th));
-	    double p2_y = path[i-1].y + L/tan(alpha)*(cos(path[i-1].th) - cos(p2_th));
-            x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+	 	double alpha = path[i].alpha;
+		double d = path[i].d;
+
+		if(alpha == 0)
+		{
+            double p1_x = path[i-1].x;
+	    	double p1_y = path[i-1].y;
+            double p2_x = path[i].x;
+			double p2_y = path[i].y;
+
+			x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
             x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
             cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
-	}
+		} else 
+		{
+			for(int j = 0; j < 10; j++) {
+				
+				double p1_th = path[i-1].th + d*j/10*tan(alpha)/L; // R = L/tan(alpha)
+				double p2_th = path[i-1].th + d*(j+1)/10*tan(alpha)/L;
+				double p1_x = path[i-1].x + L/tan(alpha)*(sin(p1_th) - sin(path[i-1].th));
+				double p1_y = path[i-1].y + L/tan(alpha)*(cos(path[i-1].th) - cos(p1_th));
+				double p2_x = path[i-1].x + L/tan(alpha)*(sin(p2_th) - sin(path[i-1].th));
+				double p2_y = path[i-1].y + L/tan(alpha)*(cos(path[i-1].th) - cos(p2_th));
+				x1 = cv::Point((int)(Res*(p1_y/res + map_origin_y)), (int)(Res*(p1_x/res + map_origin_x)));
+				x2 = cv::Point((int)(Res*(p2_y/res + map_origin_y)), (int)(Res*(p2_x/res + map_origin_x)));
+				cv::line(imgResult, x1, x2, cv::Scalar(255, 0, 0), thickness, lineType);
+			}
+		}
+
+	
     }
     cv::namedWindow("Mapping");
     //cv::Rect imgROI((int)Res*200,(int)Res*200,(int)Res*400,(int)Res*400);
@@ -212,6 +269,9 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
     new_node->rand = x_rand;
     new_node->location = x_new;
     new_node->idx_parent = idx_near;
+
+	this->ptrTable[idx_near]->is_parent = true;
+
     new_node->alpha = alpha;
     new_node->d = d;
     
@@ -234,7 +294,9 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
     while(i < K && anyway_count_i <ANY_WAY_COUNT_MAX)
     {
-	anyway_count_i++;
+		i += endLinearPathToLastNode();
+		anyway_count_i++;
+
     	point x_rand = randomState(x_max, x_min, y_max, y_min);
 
 		//double randomPart = min_dist_squared_to_goal / 25;
@@ -246,15 +308,14 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 			x_rand.y = lerp(x_goal.y, x_rand.y, 0.5);
 		}*/
 
-    	int x_near_idx = nearestNeighbor(x_rand, MaxStep);
+    	int x_near_idx = nearestNeighbor(x_rand, MAX_D);
 
 		if(x_near_idx == -1)	continue;
-		
 		
     	node *x_near_node = this->ptrTable[x_near_idx];
     	point x_near = x_near_node -> location;
     	
-    	int valid = newState(out, x_near, x_rand, MaxStep);
+    	int valid = newState(out, x_near, x_rand, MAX_D);
     	
 
     	if(valid == 0){
@@ -262,12 +323,9 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 		}
 
 		i++;
-		if(i % 500 == 0)
-			printf("%d !!!\n",i);
+		if(i % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",i);}
 
-    	
     	point x_new;
-    	
     	x_new.x = out[0];
     	x_new.y = out[1];
     	x_new.th = out[2];
@@ -286,28 +344,48 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
 		if(min_dist_squared_to_goal < TO_GOAL_MAX_MARGIN_SQUARED) 
 		{
-			printf("Find path at %d steps.\n" , i);
+			if(RRT_DEBUG)printf("Find path at %d steps.\n" , i);
 			return 1;
 			//break;
 		}
-			
-		/*if( i > MAX_ITER)
-		{
-			
-			 for (int j = 1; j < count; j++) {
-			    delete ptrTable[j];
-			 }	
-			count = 1;
-			i = 0; 
-			min_dist_squared_to_goal = DOUBLE_INFINITE;
-			continue;
-		}*/			
+
+				
     }
-	if(anyway_count_i == ANY_WAY_COUNT_MAX){
-		printf("too many collisions.\n");
+	if(anyway_count_i >= ANY_WAY_COUNT_MAX){
+		if(RRT_DEBUG)printf("too many collisions.\n");
 	}
-	printf("RRT Tree not found.\n");
+	if(RRT_DEBUG)printf("RRT Tree not found.\n");
 	return -1;
+}
+
+int rrtTree::endLinearPathToLastNode()
+{
+	point x_new = this->ptrTable[this->count-1]->location;
+	point x_rand = this->ptrTable[this->count-1]->rand;
+	double random_length = lerp(MIN_D, MAX_D, getRandomDouble());
+	double direction_maxd = findMaxDinDirection(x_new);
+	int parent_index = this->count - 1;
+	int i=0;
+	if(direction_maxd > MIN_LINEAR_LENGTH_TO_ADD)
+	{
+		point x_new2;
+		x_new2.x = x_new.x + direction_maxd * cos(x_new.th);
+		x_new2.y = x_new.y + direction_maxd * sin(x_new.th);
+		x_new2.th = x_new.th;
+		addVertex(x_new2, x_rand, parent_index, 0, direction_maxd);
+		i++;
+	}
+
+	if(!isCollisionInLine(x_new,random_length))
+	{
+		point x_new2;
+		x_new2.x = x_new.x + random_length * cos(x_new.th);
+		x_new2.y = x_new.y + random_length * sin(x_new.th);
+		x_new2.th = x_new.th;
+		addVertex(x_new2, x_rand, parent_index, 0, random_length);
+		i++;
+	}
+	return i;
 }
 
 
@@ -423,7 +501,7 @@ int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
 	{
 
 		double alpha = (2 * getRandomDouble() - 1) * max_alpha;
-		double d = lerp(MIN_D, MaxStep, getRandomDouble());
+		double d = lerp(MIN_D, MAX_D, getRandomDouble());
 		double R = L / tan(alpha);
 		
 		double xc = x_near.x - R * x_near_sin;
@@ -511,6 +589,93 @@ bool rrtTree::isCollision(point x1, point x2, double d, double R) {
 	
 }
 
+bool rrtTree::isCollisionInLine(point x1, double d) {
+    //TODO
+	//int x1i = x1.x / this->res + this.map_origin_x;
+	//int x1j = x1.y / this->res + this.map_origin_y;
+	//int x2i = x2.x / this->res + this.map_origin_x;
+	//int x2j = x2.y / this->res + this.map_origin_y;
+	
+	double dist = 0;
+	
+	double xc = x1.x ;
+	double yc = x1.y ;
+	
+	//printf("is Collision Called at x: %.3f, y: %.3f, th: %.3f, d: %.3f, R: %.3f \n", x1.x, x1.y, x1.th, d, R);
+	
+	while(dist <= d)
+	{
+		
+		double x_prime = xc + dist * cos(x1.th);
+		double y_prime = yc + dist * sin(x1.th);
+		
+		int i = (int)((x_prime / this->res) + this->map_origin_x);
+		int j = (int)((y_prime / this->res) + this->map_origin_y);
+		
+		if(i<0)
+			return true;
+		if(i>=this->map.rows)
+			return true;
+		if(j<0)
+			return true;
+		if(j>=this->map.cols)
+			return true;
+
+		int occupied = this->map.at<uchar>(i,j);
+		if(occupied <= 125 )
+		{
+			return true;
+		}
+		dist += this->res;
+	}
+	
+	return false;
+}
+
+
+
+double rrtTree::findMaxDinDirection(point x1) {
+    //TODO
+	//int x1i = x1.x / this->res + this.map_origin_x;
+	//int x1j = x1.y / this->res + this.map_origin_y;
+	//int x2i = x2.x / this->res + this.map_origin_x;
+	//int x2j = x2.y / this->res + this.map_origin_y;
+	
+	double dist = 0;
+	
+	double xc = x1.x ;
+	double yc = x1.y ;
+	
+	//printf("is Collision Called at x: %.3f, y: %.3f, th: %.3f, d: %.3f, R: %.3f \n", x1.x, x1.y, x1.th, d, R);
+
+	while(true)
+	{
+		
+		double x_prime = xc + dist * cos(x1.th);
+		double y_prime = yc + dist * sin(x1.th);
+		
+		int i = (int)((x_prime / this->res) + this->map_origin_x);
+		int j = (int)((y_prime / this->res) + this->map_origin_y);
+		
+		if(i<0)
+			return dist - DIRECTION_SEARCH_MARGIN;
+		if(i>=this->map.rows)
+			return dist - DIRECTION_SEARCH_MARGIN;
+		if(j<0)
+			return dist - DIRECTION_SEARCH_MARGIN;
+		if(j>=this->map.cols)
+			return dist - DIRECTION_SEARCH_MARGIN;
+
+		int occupied = this->map.at<uchar>(i,j);
+		if(occupied <= 125 )
+		{
+			return dist - DIRECTION_SEARCH_MARGIN;
+		}
+		dist += this->res;
+	}
+	return -1;
+}
+
 std::vector<traj> rrtTree::backtracking_traj(){
     //TODO
     int current_index = nearestNeighbor(this->x_goal);
@@ -548,8 +713,6 @@ std::vector<traj> rrtTree::backtracking_traj(){
 		
     	current_index = cur_node -> idx_parent;
     }
-
-
 
     return total_traj;
     

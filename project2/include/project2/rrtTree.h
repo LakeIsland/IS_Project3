@@ -25,6 +25,7 @@ private:
         int idx_parent;
 	double alpha;
 	double d;
+	bool is_parent;
     }*root;
 
     int count;
@@ -39,6 +40,9 @@ private:
     void addVertex(point x_new, point x_rand, int idx_near, double alpha, double d);
     int nearestNeighbor(point x_rand, double MaxStep);
     int nearestNeighbor(point x_rand);
+	bool isCollisionInLine(point x1, double d);
+	double findMaxDinDirection(point x);
+	int endLinearPathToLastNode();
     bool isCollision(point x1, point x2, double d, double R);
     point randomState(double x_max, double x_min, double y_max, double y_min);
     int newState(double *out, point x_near, point x_rand, double MaxStep);

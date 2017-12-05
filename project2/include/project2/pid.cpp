@@ -5,7 +5,7 @@
 #define THRESHOLD_R 0.2
 #define THRESHOLD_MAX_R 0.6
 
-#define MAX_ROTATE 1
+#define MAX_ROTATE 0.4
 
 PID::PID(){
 
@@ -48,11 +48,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 	
 	// linearly interpolate clamped value(function of distance)
 	double clamped_value = (distance - max_radius) / (max_radius - THRESHOLD_R);
-	
-	if(clamped_value > 1)
-		clamped_value = 1;
-	else if(clamped_value < 0)
-		clamped_value = 0;
+	clamped_value = clamp(0,1,clamped_value);
 
 	// set weight from this clamped value.
 	
@@ -67,6 +63,10 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 	double error = weight_g * theta_g + weight_d * theta_d - theta_h;
 	error = theta_g - theta_h;
 	error = clampToPi(error);
+
+	this->error_diff = (error - (this->error));
+	this->error = error;
+	this->error_sum += error;
 	
 	double prop_term = (this->Kp) * (this -> error);
 	double intg_term = (this->Ki) * (this -> error_sum);
@@ -77,9 +77,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
 
 	result = clampToPi(result);
 	
-	this->error_diff = (error - (this->error));
-	this->error = error;
-	this->error_sum += error;
+	
 	
 	//float alphaMixFactor = clamp(0, 1, 1/distance);
 	//float final_result = lerp(result, cur_goal.alpha, alphaMixFactor);
