@@ -33,7 +33,7 @@ double world_y_min;
 double world_y_max;
 
 //parameters we should adjust : K, margin, MaxStep
-int margin = 7;
+int margin = 6;
 int K = 1500;
 double MaxStep = 2;
 
@@ -353,13 +353,17 @@ void create_clock_wise_way_points(cv::Mat map, point start_position)
 	waypoints.push_back(start_position);
 	for(int j=0; j<TRACK_NUMBER; j++)
 	{
-		for(int i=1; i<4; i++)
+		for(int i=1; i<=4; i++)
 		{
-			int idx = (i + where) % 4;
-			point _point = find_empty_point(map, xs[idx], ys[idx]);
-			waypoints.push_back(_point);
+			if(i == 4 && j==TRACK_NUMBER-1){
+				waypoints.push_back(start_position);
+			} else {
+				int idx = (i + where) % 4;
+				point _point = find_empty_point(map, xs[idx], ys[idx]);
+				waypoints.push_back(_point);
+			}	
 		}
-		waypoints.push_back(start_position);
+		
 	}
 
 	//point right_top = find_empty_point(map, 1, 1);
