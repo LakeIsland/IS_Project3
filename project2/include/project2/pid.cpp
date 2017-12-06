@@ -5,7 +5,7 @@
 #define THRESHOLD_R 0.2
 #define THRESHOLD_MAX_R 0.6
 
-#define MAX_ROTATE 0.6
+#define MAX_ROTATE 0.5
 
 PID::PID(){
 
@@ -31,7 +31,7 @@ void PID::clear()
 }
 
 
-float PID::get_control(point car_pose, traj cur_goal, traj next_goal) {
+float PID::get_control(point car_pose, traj prev_goal, traj cur_goal, traj next_goal) {
     	//TODO
 	double dx = cur_goal.x - car_pose.x;
 	double dy = cur_goal.y - car_pose.y;
@@ -76,8 +76,6 @@ float PID::get_control(point car_pose, traj cur_goal, traj next_goal) {
 	double result = prop_term + intg_term + diff_term;
 
 	result = clampToPi(result);
-	
-	
 	
 	//float alphaMixFactor = clamp(0, 1, 1/distance);
 	//float final_result = lerp(result, cur_goal.alpha, alphaMixFactor);

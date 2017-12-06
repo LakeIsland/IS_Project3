@@ -8,10 +8,13 @@ double MAX_D = 2;
 double max_alpha = 0.16;
 double L = 0.325;
 
-int RRT_DEBUG = 1;				// 디버그 출력 여부
-int ANY_WAY_K_COEFFICIENT = 5;	// 충돌 포함해서 셀 최대 횟수 (5 * K번)
-double DIRECTION_SEARCH_MARGIN = 3;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
-double TO_GOAL_MAX_MARGIN= 1.0;		// 최종 목표지점 허용 오차.
+int RRT_DEBUG = 0;			// 디버그 출력 여부
+int ANY_WAY_K_COEFFICIENT = 5;		// 충돌 포함해서 셀 최대 횟수 (5 * K번)
+double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
+double TO_GOAL_MAX_MARGIN= 0.4;		// 최종 목표지점 허용 오차.
+
+double LINEAR_COLLISION_MARGIN = 0.0;
+double CURVE_COLLISION_MARGIN = 1.0;
 
 double dist_squared(point p1, point p2)
 {
@@ -290,6 +293,7 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
 
     new_node->alpha = alpha;
     new_node->d = d;
+	new_node->cost =  this->ptrTable[idx_near]->cost + d;
     
     this->ptrTable[new_index] = new_node;
     
@@ -335,21 +339,21 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
     	
 
     	if(valid == 0){
-			continue;
+		continue;
 		}
 
-		if(this->count % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",this->count);}
+	if(this->count % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",this->count);}
 
     	point x_new;
     	x_new.x = out[0];
     	x_new.y = out[1];
     	x_new.th = out[2];
     	
-    	addVertex(x_new, x_rand, x_near_idx, out[3], out[4]);
-		check_near_goal_point();
+	addVertex(x_new, x_rand, x_near_idx, out[3], out[4]);
+	check_near_goal_point();
 
-		addRandomLinearPathToLastNode();
-		addMaxLinearPathToLastNode();
+	addRandomLinearPathToLastNode();
+	addMaxLinearPathToLastNode();
 
     }
 	if(this->is_finished_to_find_near_goal)
@@ -388,15 +392,25 @@ void rrtTree::addMaxLinearPathToLastNode()
 	point x_rand = this->ptrTable[this->count-1]->rand;
 	double direction_maxd = findMaxDinDirection(x_new);
 	int parent_index = this->count - 1;
-
-	if(direction_maxd > 0)
+	
+	while(direction_maxd > MIN_D)
 	{
 		point x_new2;
 		x_new2.x = x_new.x + direction_maxd * cos(x_new.th);
 		x_new2.y = x_new.y + direction_maxd * sin(x_new.th);
 		x_new2.th = x_new.th;
 		addVertex(x_new2, x_rand, parent_index, 0, direction_maxd);
+		direction_maxd -= lerp(MIN_D, MAX_D, getRandomDouble());
 	}
+	
+	/*if(direction_maxd > MIN_D)
+	{
+		point x_new2;
+		x_new2.x = x_new.x + direction_maxd * cos(x_new.th);
+		x_new2.y = x_new.y + direction_maxd * sin(x_new.th);
+		x_new2.th = x_new.th;
+		addVertex(x_new2, x_rand, parent_index, 0, direction_maxd);
+	}*/
 	return;
 }
 
@@ -418,16 +432,16 @@ point rrtTree::randomState(double x_max, double x_min, double y_max, double y_mi
 
 point randomStateNearGoal(double x_max, double x_min, double y_max, double y_min){
 	double x_rand = 2 * getRandomDouble() - 1;
-    double y_rand = 2 * getRandomDouble() - 1;
+	double y_rand = 2 * getRandomDouble() - 1;
     
-    double nx = x_min + (x_max - x_min) * x_rand;
-    double ny = y_min + (y_max - y_min) * y_rand;
+	double nx = x_min + (x_max - x_min) * x_rand;
+	double ny = y_min + (y_max - y_min) * y_rand;
     
-    point _point;
-    _point.x = nx;
-    _point.y = ny;
+	point _point;
+	_point.x = nx;
+	_point.y = ny;
     
-    return _point;
+	return _point;
 }
 
 
@@ -435,7 +449,7 @@ int rrtTree::nearestNeighbor(point x_rand, double MaxStep) {
     //TODO
 	double theta_max = MaxStep * tan(max_alpha) / L ;
 	
-	double min_dist_squared = DOUBLE_INFINITE;
+	double min_dist = DOUBLE_INFINITE;
 	int min_dist_node_index = -1;
 
 	for(int i = 0; i<this->count; i++)
@@ -449,18 +463,16 @@ int rrtTree::nearestNeighbor(point x_rand, double MaxStep) {
 		float theta_g = atan2(dy,dx);
 		
 		float error = theta_g - _point.th;
-		
-		while(error > M_PI)
-			error -= (2 * M_PI);
-		while(error <= -M_PI)
-			error += (2 * M_PI);
-
-		double dist_squared = (dx * dx) + (dy * dy);
-		
+		error = clampToPi(error);
 		error = error > 0? error : -error;
-		if(error < theta_max && dist_squared < min_dist_squared)
+
+		double _dist = dist(x_rand, _point);
+
+		double cost = _dist;
+		
+		if(error < theta_max && cost < min_dist)
 		{
-			min_dist_squared = dist_squared;
+			min_dist = cost;
 			min_dist_node_index = i;
 		}
 	}
@@ -495,8 +507,8 @@ int rrtTree::nearestNeighbor(point x_rand) {
 
 int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
     //TODO
-    double x_near_sin = sin(x_near.th);
-    double x_near_cos = cos(x_near.th);
+	double x_near_sin = sin(x_near.th);
+	double x_near_cos = cos(x_near.th);
 
 	double dx = x_near.x - x_goal.x;
 	double dy = x_near.y - x_goal.y;
@@ -505,10 +517,10 @@ int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
 	double dist_factor = clamp(0,1,dist_to_goal / 25);
 	
 
-    double min_dist_squared = DOUBLE_INFINITE;
-    double min_x, min_y, min_th, min_alpha, min_d;
-    
-    int ITER_N = 20;
+	double min_dist_squared = DOUBLE_INFINITE;
+	double min_x, min_y, min_th, min_alpha, min_d;
+
+	int ITER_N = 20;
 	for(int i=0; i<ITER_N; i++)
 	{
 
@@ -553,23 +565,18 @@ int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
 	
 	double R = L / tan(min_alpha);
 	
-	return isCollision(x_near, _point, min_d, R)?0:1;
+	return isCollision(x_near, _point, min_d, min_alpha)?0:1;
 }
 
-bool rrtTree::isCollision(point x1, point x2, double d, double R) {
+bool rrtTree::isCollision(point x1, point x2, double d, double alpha) {
     //TODO
-	//int x1i = x1.x / this->res + this.map_origin_x;
-	//int x1j = x1.y / this->res + this.map_origin_y;
-	//int x2i = x2.x / this->res + this.map_origin_x;
-	//int x2j = x2.y / this->res + this.map_origin_y;
-	
+	double R = L / tan(alpha);
 	double dist = 0;
-	
 	double xc = x1.x - R * sin(x1.th);
 	double yc = x1.y + R * cos(x1.th);
+	int collision_margin = 0;//(CURVE_COLLISION_MARGIN / this->res) / R;
 	
-	//printf("is Collision Called at x: %.3f, y: %.3f, th: %.3f, d: %.3f, R: %.3f \n", x1.x, x1.y, x1.th, d, R);
-	
+
 	while(dist <= d)
 	{
 		double beta = dist / R;
@@ -579,65 +586,33 @@ bool rrtTree::isCollision(point x1, point x2, double d, double R) {
 		
 		int i = (int)((x_prime / this->res) + this->map_origin_x);
 		int j = (int)((y_prime / this->res) + this->map_origin_y);
-		
-		if(i<0)
+		bool collided = isCollidedWithMargin(i,j, collision_margin);
+		if(collided)
 			return true;
-		if(i>=this->map.rows)
-			return true;
-		if(j<0)
-			return true;
-		if(j>=this->map.cols)
-			return true;
-
-		int occupied = this->map.at<uchar>(i,j);
-		if(occupied <= 125 )
-		{
-			return true;
-		}
 		dist += this->res;
 	}
-	
 	return false;
-	
 }
 
+
+
 bool rrtTree::isCollisionInLine(point x1, double d) {
-    //TODO
-	//int x1i = x1.x / this->res + this.map_origin_x;
-	//int x1j = x1.y / this->res + this.map_origin_y;
-	//int x2i = x2.x / this->res + this.map_origin_x;
-	//int x2j = x2.y / this->res + this.map_origin_y;
-	
+
 	double dist = 0;
-	
 	double xc = x1.x ;
 	double yc = x1.y ;
-	
-	//printf("is Collision Called at x: %.3f, y: %.3f, th: %.3f, d: %.3f, R: %.3f \n", x1.x, x1.y, x1.th, d, R);
+	int collision_margin = (int)(LINEAR_COLLISION_MARGIN / this->res);
 	
 	while(dist <= d)
 	{
-		
 		double x_prime = xc + dist * cos(x1.th);
 		double y_prime = yc + dist * sin(x1.th);
-		
 		int i = (int)((x_prime / this->res) + this->map_origin_x);
 		int j = (int)((y_prime / this->res) + this->map_origin_y);
-		
-		if(i<0)
-			return true;
-		if(i>=this->map.rows)
-			return true;
-		if(j<0)
-			return true;
-		if(j>=this->map.cols)
+		bool collided = isCollidedWithMargin(i,j, collision_margin);
+		if(collided)
 			return true;
 
-		int occupied = this->map.at<uchar>(i,j);
-		if(occupied <= 125 )
-		{
-			return true;
-		}
 		dist += this->res;
 	}
 	
@@ -645,47 +620,70 @@ bool rrtTree::isCollisionInLine(point x1, double d) {
 }
 
 
-
 double rrtTree::findMaxDinDirection(point x1) {
-    //TODO
-	//int x1i = x1.x / this->res + this.map_origin_x;
-	//int x1j = x1.y / this->res + this.map_origin_y;
-	//int x2i = x2.x / this->res + this.map_origin_x;
-	//int x2j = x2.y / this->res + this.map_origin_y;
-	
+
 	double dist = 0;
-	
 	double xc = x1.x ;
 	double yc = x1.y ;
+	int collision_margin = (int) (LINEAR_COLLISION_MARGIN / this->res);
 	
-	//printf("is Collision Called at x: %.3f, y: %.3f, th: %.3f, d: %.3f, R: %.3f \n", x1.x, x1.y, x1.th, d, R);
-
 	while(true)
 	{
-		
 		double x_prime = xc + dist * cos(x1.th);
 		double y_prime = yc + dist * sin(x1.th);
 		
 		int i = (int)((x_prime / this->res) + this->map_origin_x);
 		int j = (int)((y_prime / this->res) + this->map_origin_y);
-		
-		if(i<0)
+		bool collided = isCollidedWithMargin(i,j, collision_margin);
+		if(collided)
 			return dist - DIRECTION_SEARCH_MARGIN;
-		if(i>=this->map.rows)
-			return dist - DIRECTION_SEARCH_MARGIN;
-		if(j<0)
-			return dist - DIRECTION_SEARCH_MARGIN;
-		if(j>=this->map.cols)
-			return dist - DIRECTION_SEARCH_MARGIN;
-
-		int occupied = this->map.at<uchar>(i,j);
-		if(occupied <= 125 )
-		{
-			return dist - DIRECTION_SEARCH_MARGIN;
-		}
 		dist += this->res;
 	}
 	return -1;
+}
+
+bool rrtTree::isCollidedWithMargin(int x, int y, int radius)
+{
+	if(radius == 0)
+		return isObstacleAt(x, y);
+
+	int min_x = (x - radius);
+	int max_x = (x + radius);
+	int min_y = (y - radius);
+	int max_y = (y + radius);
+
+	if(min_x < 0 || max_x >= this->map.rows||min_y < 0|| max_y >= this->map.cols)
+		return true;
+	
+	int radius_squared = (int)(radius * radius);
+	for(int i = (-radius); i <= (radius); i++)
+	{
+		for(int j = (-radius); j<= (radius); j++)
+		{
+			if ((i) * (i) + (j)* (j) > radius_squared )
+				continue;
+
+			int occupied = this->map.at<uchar>(i + x, j + y);
+			if(occupied <= 125)
+			{
+				return true;
+			}
+		}
+		
+	}
+	return false;
+}
+
+bool rrtTree::isObstacleAt(int x, int y)
+{
+	if(x < 0 || x >= this->map.rows||y < 0|| y >=this->map.cols)
+		return true;
+	int occupied = this->map.at<uchar>(x, y);
+	if(occupied <= 125)
+	{
+		return true;
+	}
+	return false;
 }
 
 std::vector<traj> rrtTree::backtracking_traj(){

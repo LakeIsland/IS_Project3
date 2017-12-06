@@ -17,32 +17,32 @@
 class rrtTree
 {
 private:
-    struct node
-    {
-        int idx;
-        point rand;
-        point location;
-        int idx_parent;
+	struct node
+	{
+		int idx;
+		point rand;
+		point location;
+		int idx_parent;
 		double alpha;
 		double d;
 		bool is_parent;
 		double cost;
 
-    }*root;
+	}*root;
 
-    int count;
-    point x_init, x_goal;
-    cv::Mat map;
-    cv::Mat map_original;
-    double map_origin_x, map_origin_y;
-    double res;
-    node *ptrTable[20000];
+	int count;
+	point x_init, x_goal;
+	cv::Mat map;
+	cv::Mat map_original;
+	double map_origin_x, map_origin_y;
+	double res;
+	node *ptrTable[20000];
 	bool is_finished_to_find_near_goal;
 
-    cv::Mat addMargin(cv::Mat map, int margin);
-    void addVertex(point x_new, point x_rand, int idx_near, double alpha, double d);
-    int nearestNeighbor(point x_rand, double MaxStep);
-    int nearestNeighbor(point x_rand);
+	cv::Mat addMargin(cv::Mat map, int margin);
+	void addVertex(point x_new, point x_rand, int idx_near, double alpha, double d);
+	int nearestNeighbor(point x_rand, double MaxStep);
+	int nearestNeighbor(point x_rand);
 	bool isCollisionInLine(point x1, double d);
 	
 	/*-----------추가 함수 ----------------*/
@@ -51,26 +51,28 @@ private:
 	void addMaxLinearPathToLastNode();		// 위에서 구한 최대 거리를 가지는 직선을 맨 마지막 노드에 추가
 
 	void check_near_goal_point();			// goal 에 도달했는지 여부 확인. is_finished_to_find_near_goal에 저장됨.
+	bool isCollidedWithMargin(int x, int y, int radius);
+	bool isObstacleAt(int x, int y);
 
-    bool isCollision(point x1, point x2, double d, double R);
-    point randomState(double x_max, double x_min, double y_max, double y_min);
-    int newState(double *out, point x_near, point x_rand, double MaxStep);
+	bool isCollision(point x1, point x2, double d, double alpha);
+	point randomState(double x_max, double x_min, double y_max, double y_min);
+	int newState(double *out, point x_near, point x_rand, double MaxStep);
 
 
 public:
-    rrtTree();
+	rrtTree();
 	rrtTree(cv::Mat map, double map_origin_x, double map_origin_y, double res, int margin);
-    rrtTree(point x_init, point x_goal, cv::Mat map, double map_origin_x, double map_origin_y, double res, int margin);
-    rrtTree(point x_init, point x_goal);
-    ~rrtTree();
+	rrtTree(point x_init, point x_goal, cv::Mat map, double map_origin_x, double map_origin_y, double res, int margin);
+	rrtTree(point x_init, point x_goal);
+	~rrtTree();
 
 	void clearTree();
 	void setNewPoint(point x_init, point x_goal);
 
-    void visualizeTree();
-    void visualizeTree(std::vector<traj> path);
-    int generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep);
-    std::vector<traj> backtracking_traj();
+	void visualizeTree();
+	void visualizeTree(std::vector<traj> path);
+	int generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep);
+	std::vector<traj> backtracking_traj();
 };
 
 
