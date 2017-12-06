@@ -11,6 +11,7 @@ double lerp(double a, double b, double bpart);
 double clamp(double min, double max, double x);
 double clampToPi(double value);
 double getLinearlyInterpolatedValue(double x1, double y1, double x2, double y2, double x);
+double getExponentiallyInterpolatecValue(double max_y, double min_y, double x);
 double myabs(double value);
 
 #endif

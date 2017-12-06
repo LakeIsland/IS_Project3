@@ -28,7 +28,11 @@ double clampToPi(double value){
 		result += 2 * PI;
 	return result;
 }
-
+double getExponentiallyInterpolatecValue(double max_y, double min_y, double x)
+{
+	double dy = max_y - min_y;
+	return dy * exp(-20 * x) + min_y;
+}
 double getLinearlyInterpolatedValue(double x1, double y1, double x2, double y2, double x)
 {
 	if(x1 > x2)

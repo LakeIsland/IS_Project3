@@ -5,7 +5,7 @@
 
 double MIN_D = 1;
 double MAX_D = 2;
-double MAX_ALPHA = 0.16;
+double MAX_ALPHA = 0.18;
 double L = 0.325;
 
 int RRT_DEBUG = 0;			// 디버그 출력 여부

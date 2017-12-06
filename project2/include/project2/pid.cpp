@@ -82,7 +82,9 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal, traj next_
 
 	
 	//printf("final_result, %.3f, result :%.3f, alpha: %.3f\n", final_result, result, cur_goal.alpha);
-	printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",dx,dy,theta_g,theta_h,error,result);
+	if(myabs(result) > MAX_ROTATE)
+		printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",dx,dy,theta_g,theta_h,error,result);
+	
 	//printf("pid result :%.3f, alpha: %.3f, error: %.3f\n", result, cur_goal.alpha, error);
 	result = clamp(-MAX_ROTATE, MAX_ROTATE,result);
 	
