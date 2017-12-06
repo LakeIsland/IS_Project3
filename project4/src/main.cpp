@@ -168,13 +168,19 @@ int main(int argc, char** argv){
 
 			traj current_goal = path_RRT.at(look_ahead_idx);
 			traj next_goal; 
+			traj prev_goal;
 
 			if(look_ahead_idx < path_RRT.size() - 1)
 				next_goal = path_RRT.at(look_ahead_idx + 1);
 			else
 				next_goal = current_goal;
 
-			float control = pid_ctrl.get_control(robot_pose, current_goal, next_goal);
+			if(look_ahead_idx > 0)
+				prev_goal = path_RRT.at(look_ahead_idx - 1);
+			else
+				prev_goal = current_goal;
+
+			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal, next_goal);
 
 			double abs_control = myabs(control);
 			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.2, CAR_TARGET_MIN_SPEED, abs_control);
