@@ -8,9 +8,23 @@ double MAX_D = 2;
 double max_alpha = 0.16;
 double L = 0.325;
 
-int RRT_DEBUG = 1;
-double DIRECTION_SEARCH_MARGIN = 2;
-double MIN_LINEAR_LENGTH_TO_ADD = 1;
+int RRT_DEBUG = 1;				// 디버그 출력 여부
+int ANY_WAY_K_COEFFICIENT = 5;	// 충돌 포함해서 셀 최대 횟수 (5 * K번)
+double DIRECTION_SEARCH_MARGIN = 3;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
+double TO_GOAL_MAX_MARGIN= 1.0;		// 최종 목표지점 허용 오차.
+
+double dist_squared(point p1, point p2)
+{
+	double dx = p1.x - p2.x;
+	double dy = p1.y - p2.y;
+	return dx * dx + dy * dy;
+}
+
+double dist(point p1, point p2)
+{
+	return sqrt(dist_squared(p1, p2));
+}
+
 
 rrtTree::rrtTree() {
     count = 0;
@@ -89,6 +103,8 @@ void rrtTree::setNewPoint(point x_init, point x_goal)
     root->rand = x_init;
     root->alpha = 0;
     root->d = 0;
+
+	this->is_finished_to_find_near_goal = false;
 }
 
 
@@ -280,33 +296,33 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
     this->count++;
 }
 
-double TO_GOAL_MAX_MARGIN_SQUARED = 1.0;
+void rrtTree::check_near_goal_point()
+{
+	point x_new = this->ptrTable[this->count - 1]->location;
+	if(dist(x_new, x_goal) < TO_GOAL_MAX_MARGIN)
+	{
+		this->is_finished_to_find_near_goal = true;
+	}
+}
+
 
 int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep) {
     //TODO
-    int i = 0;
 	int anyway_count_i = 0;
 
     double out[5];
-    int ANY_WAY_COUNT_MAX = 5 * K;
+    int ANY_WAY_COUNT_MAX = ANY_WAY_K_COEFFICIENT * K;
 
 	double min_dist_squared_to_goal = DOUBLE_INFINITE;
+	addRandomLinearPathToLastNode();
+	addMaxLinearPathToLastNode();
 
-    while(i < K && anyway_count_i <ANY_WAY_COUNT_MAX)
+    while(this->count < K && anyway_count_i <ANY_WAY_COUNT_MAX && !(this->is_finished_to_find_near_goal))
     {
-		i += endLinearPathToLastNode();
+		
 		anyway_count_i++;
 
     	point x_rand = randomState(x_max, x_min, y_max, y_min);
-
-		//double randomPart = min_dist_squared_to_goal / 25;
-		//randomPart = clamp(0, 1, randomPart);
-
-		/*if(min_dist_squared_to_goal < 25 && getRandomDouble() < 0.7)
-		{
-			x_rand.x = lerp(x_goal.x, x_rand.x, 0.5);
-			x_rand.y = lerp(x_goal.y, x_rand.y, 0.5);
-		}*/
 
     	int x_near_idx = nearestNeighbor(x_rand, MAX_D);
 
@@ -322,8 +338,7 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 			continue;
 		}
 
-		i++;
-		if(i % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",i);}
+		if(this->count % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",this->count);}
 
     	point x_new;
     	x_new.x = out[0];
@@ -331,26 +346,17 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
     	x_new.th = out[2];
     	
     	addVertex(x_new, x_rand, x_near_idx, out[3], out[4]);
-    	
-		double dx = x_new.x - x_goal.x;
-		double dy = x_new.y - x_goal.y;
+		check_near_goal_point();
 
-		double dist_squared = (dx * dx) + (dy * dy);
-		
-		if(dist_squared < min_dist_squared_to_goal)
-		{
-			min_dist_squared_to_goal = dist_squared;
-		}
+		addRandomLinearPathToLastNode();
+		addMaxLinearPathToLastNode();
 
-		if(min_dist_squared_to_goal < TO_GOAL_MAX_MARGIN_SQUARED) 
-		{
-			if(RRT_DEBUG)printf("Find path at %d steps.\n" , i);
-			return 1;
-			//break;
-		}
-
-				
     }
+	if(this->is_finished_to_find_near_goal)
+	{
+		if(RRT_DEBUG)printf("FIND PATH in %d steps.\n", this->count);
+		return 1;
+	}
 	if(anyway_count_i >= ANY_WAY_COUNT_MAX){
 		if(RRT_DEBUG)printf("too many collisions.\n");
 	}
@@ -358,23 +364,12 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 	return -1;
 }
 
-int rrtTree::endLinearPathToLastNode()
+void rrtTree::addRandomLinearPathToLastNode()
 {
 	point x_new = this->ptrTable[this->count-1]->location;
 	point x_rand = this->ptrTable[this->count-1]->rand;
 	double random_length = lerp(MIN_D, MAX_D, getRandomDouble());
-	double direction_maxd = findMaxDinDirection(x_new);
 	int parent_index = this->count - 1;
-	int i=0;
-	if(direction_maxd > MIN_LINEAR_LENGTH_TO_ADD)
-	{
-		point x_new2;
-		x_new2.x = x_new.x + direction_maxd * cos(x_new.th);
-		x_new2.y = x_new.y + direction_maxd * sin(x_new.th);
-		x_new2.th = x_new.th;
-		addVertex(x_new2, x_rand, parent_index, 0, direction_maxd);
-		i++;
-	}
 
 	if(!isCollisionInLine(x_new,random_length))
 	{
@@ -383,9 +378,26 @@ int rrtTree::endLinearPathToLastNode()
 		x_new2.y = x_new.y + random_length * sin(x_new.th);
 		x_new2.th = x_new.th;
 		addVertex(x_new2, x_rand, parent_index, 0, random_length);
-		i++;
 	}
-	return i;
+	return;
+}
+
+void rrtTree::addMaxLinearPathToLastNode()
+{
+	point x_new = this->ptrTable[this->count-1]->location;
+	point x_rand = this->ptrTable[this->count-1]->rand;
+	double direction_maxd = findMaxDinDirection(x_new);
+	int parent_index = this->count - 1;
+
+	if(direction_maxd > 0)
+	{
+		point x_new2;
+		x_new2.x = x_new.x + direction_maxd * cos(x_new.th);
+		x_new2.y = x_new.y + direction_maxd * sin(x_new.th);
+		x_new2.th = x_new.th;
+		addVertex(x_new2, x_rand, parent_index, 0, direction_maxd);
+	}
+	return;
 }
 
 

@@ -2,6 +2,7 @@
 #define CUSTOM_MATH_UTILS_H
 #include <cmath>
 #include <cstdlib>
+
 #define DOUBLE_INFINITE 99999999999
 #define PI 3.14159265358979323846
 

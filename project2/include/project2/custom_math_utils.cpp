@@ -1,5 +1,6 @@
 #include "custom_math_utils.h"
 
+
 double getRandomDouble()
 {
 	return (double)rand() / (double)RAND_MAX;
@@ -55,4 +56,5 @@ double myabs(double value)
 		return -value;
 	return value;
 }
+
 

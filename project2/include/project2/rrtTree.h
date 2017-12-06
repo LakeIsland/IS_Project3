@@ -23,9 +23,11 @@ private:
         point rand;
         point location;
         int idx_parent;
-	double alpha;
-	double d;
-	bool is_parent;
+		double alpha;
+		double d;
+		bool is_parent;
+		double cost;
+
     }*root;
 
     int count;
@@ -35,14 +37,21 @@ private:
     double map_origin_x, map_origin_y;
     double res;
     node *ptrTable[20000];
+	bool is_finished_to_find_near_goal;
 
     cv::Mat addMargin(cv::Mat map, int margin);
     void addVertex(point x_new, point x_rand, int idx_near, double alpha, double d);
     int nearestNeighbor(point x_rand, double MaxStep);
     int nearestNeighbor(point x_rand);
 	bool isCollisionInLine(point x1, double d);
-	double findMaxDinDirection(point x);
-	int endLinearPathToLastNode();
+	
+	/*-----------추가 함수 ----------------*/
+	double findMaxDinDirection(point x);	// x 에서 x th 방향으로 추가적으로 충돌 없이 더 갈 수 있는 최대 거리.
+	void addRandomLinearPathToLastNode();	// 랜덤 거리를 가지는 직선을 맨 마지막 노드에 추가.
+	void addMaxLinearPathToLastNode();		// 위에서 구한 최대 거리를 가지는 직선을 맨 마지막 노드에 추가
+
+	void check_near_goal_point();			// goal 에 도달했는지 여부 확인. is_finished_to_find_near_goal에 저장됨.
+
     bool isCollision(point x1, point x2, double d, double R);
     point randomState(double x_max, double x_min, double y_max, double y_min);
     int newState(double *out, point x_near, point x_rand, double MaxStep);
@@ -63,3 +72,8 @@ public:
     int generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep);
     std::vector<traj> backtracking_traj();
 };
+
+
+double dist(point p1, point p2);
+double dist_squared(point p1, point p2);
+

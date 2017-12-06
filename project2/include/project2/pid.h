@@ -11,7 +11,7 @@ public:
     PID();
 
     //this function makes control output using arguments which are the current value and the target setpoint.
-    float get_control(point car_pose, traj prev_goal, traj cur_goal);
+    float get_control(point car_pose, traj cur_goal, traj next_gal);
 	void clear();
 private:
     float error;

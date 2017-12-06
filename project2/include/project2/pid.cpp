@@ -5,7 +5,7 @@
 #define THRESHOLD_R 0.2
 #define THRESHOLD_MAX_R 0.6
 
-#define MAX_ROTATE 0.4
+#define MAX_ROTATE 0.6
 
 PID::PID(){
 
@@ -31,8 +31,8 @@ void PID::clear()
 }
 
 
-float PID::get_control(point car_pose, traj prev_goal, traj cur_goal) {
-    //TODO
+float PID::get_control(point car_pose, traj cur_goal, traj next_goal) {
+    	//TODO
 	double dx = cur_goal.x - car_pose.x;
 	double dy = cur_goal.y - car_pose.y;
 
