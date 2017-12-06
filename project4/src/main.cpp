@@ -38,8 +38,8 @@ int K = 1500;
 double MaxStep = 2;
 
 int waypoint_margin = 22;
-double CAR_TARGET_MAX_SPEED = 1;
-double CAR_TARGET_MIN_SPEED = 1;
+double CAR_TARGET_MAX_SPEED = 5;
+double CAR_TARGET_MIN_SPEED = 3;
 
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 1000;
