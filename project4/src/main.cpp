@@ -38,8 +38,8 @@ int K = 1500;
 double MaxStep = 2;
 
 int waypoint_margin = 22;
-double CAR_TARGET_MAX_SPEED = 5;
-double CAR_TARGET_MIN_SPEED = 3;
+double CAR_TARGET_MAX_SPEED = 3;
+double CAR_TARGET_MIN_SPEED = 2;
 
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 1000;
@@ -268,28 +268,7 @@ void finish()
 
 void set_waypoints()
 {
-    std::srand(std::time(NULL));
-    point waypoint_candid[5];
-    waypoint_candid[0].x = -3.5;
-    waypoint_candid[0].y = 12.0;
-
-    cv::Mat map_margin = map.clone();
-    int jSize = map.cols; // the number of columns
-    int iSize = map.rows; // the number of rows
-
-    for (int i = 0; i < iSize; i++) {
-        for (int j = 0; j < jSize; j++) {
-            if (map.at<uchar>(i, j) < 125) {
-                for (int k = i - waypoint_margin; k <= i + waypoint_margin; k++) {
-                    for (int l = j - waypoint_margin; l <= j + waypoint_margin; l++) {
-                        if (k >= 0 && l >= 0 && k < iSize && l < jSize) {
-                            map_margin.at<uchar>(k, l) = 0;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    
 
     //TODO 2
     // Make your own code to select waypoints.
@@ -315,7 +294,7 @@ void set_waypoints()
     }*/
 
     //waypoints.push_back(waypoint_candid[0]);
-    create_clock_wise_way_points(map_margin, waypoint_candid[0]);
+    //create_clock_wise_way_points(map_margin, waypoint_candid[0]);
 }
 
 int determin_where_point_is(point start_position)
@@ -353,6 +332,8 @@ int determin_where_point_is(point start_position)
 
 void create_clock_wise_way_points(cv::Mat map, point start_position)
 {
+	waypoints.clear();
+
 	int where = determin_where_point_is(start_position);
 	int xs[] = {0,0,1,1};
 	int ys[] = {0,1,1,0};
@@ -443,12 +424,36 @@ void generate_path_RRT()
      * 4.  when you store path, you have to reverse the order of points in the generated path since BACKTRACKING makes a path in a reverse order (goal -> start).
      * 5. end
      */
+	std::srand(std::time(NULL));
+	point waypoint_candid[5];
+	waypoint_candid[0].x = -3.5;
+	waypoint_candid[0].y = 12.0;
+
+	cv::Mat map_margin = map.clone();
+	int jSize = map.cols; // the number of columns
+	int iSize = map.rows; // the number of rows
+
+	for (int i = 0; i < iSize; i++) {
+	for (int j = 0; j < jSize; j++) {
+	    if (map.at<uchar>(i, j) < 125) {
+		for (int k = i - waypoint_margin; k <= i + waypoint_margin; k++) {
+		    for (int l = j - waypoint_margin; l <= j + waypoint_margin; l++) {
+		        if (k >= 0 && l >= 0 && k < iSize && l < jSize) {
+		            map_margin.at<uchar>(k, l) = 0;
+		        }
+		    }
+		}
+	    }
+	}
+	}
 
 	rrtTree* _rrtTree = new rrtTree(map, map_origin_x, map_origin_y, res, margin);
 	std::vector<int> track_sizes;
 	
 	while(true)
 	{
+		create_clock_wise_way_points(map_margin, waypoint_candid[0]);
+
 		path_RRT.clear();
 		track_sizes.clear();
 
