@@ -5,16 +5,16 @@
 
 double MIN_D = 1;
 double MAX_D = 2;
-double max_alpha = 0.16;
+double MAX_ALPHA = 0.16;
 double L = 0.325;
 
 int RRT_DEBUG = 0;			// 디버그 출력 여부
 int ANY_WAY_K_COEFFICIENT = 5;		// 충돌 포함해서 셀 최대 횟수 (5 * K번)
 double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
-double TO_GOAL_MAX_MARGIN= 0.4;		// 최종 목표지점 허용 오차.
+double TO_GOAL_MAX_MARGIN= 0.6;		// 최종 목표지점 허용 오차.
 
 double LINEAR_COLLISION_MARGIN = 0.0;
-double CURVE_COLLISION_MARGIN = 1.0;
+int MAX_CURVE_MARGIN = 4;
 
 double dist_squared(point p1, point p2)
 {
@@ -447,7 +447,7 @@ point randomStateNearGoal(double x_max, double x_min, double y_max, double y_min
 
 int rrtTree::nearestNeighbor(point x_rand, double MaxStep) {
     //TODO
-	double theta_max = MaxStep * tan(max_alpha) / L ;
+	double theta_max = MaxStep * tan(MAX_ALPHA) / L ;
 	
 	double min_dist = DOUBLE_INFINITE;
 	int min_dist_node_index = -1;
@@ -524,7 +524,7 @@ int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
 	for(int i=0; i<ITER_N; i++)
 	{
 
-		double alpha = (2 * getRandomDouble() - 1) * max_alpha;
+		double alpha = (2 * getRandomDouble() - 1) * MAX_ALPHA;
 		double d = lerp(MIN_D, MAX_D, getRandomDouble());
 		double R = L / tan(alpha);
 		
@@ -574,7 +574,8 @@ bool rrtTree::isCollision(point x1, point x2, double d, double alpha) {
 	double dist = 0;
 	double xc = x1.x - R * sin(x1.th);
 	double yc = x1.y + R * cos(x1.th);
-	int collision_margin = 0;//(CURVE_COLLISION_MARGIN / this->res) / R;
+	double alpha_magnitude = myabs(alpha)/MAX_ALPHA;
+	int collision_margin = (int)lerp(0, MAX_CURVE_MARGIN, alpha_magnitude);//0;//(CURVE_COLLISION_MARGIN / this->res) / R;
 	
 
 	while(dist <= d)
