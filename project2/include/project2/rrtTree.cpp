@@ -13,8 +13,10 @@ int ANY_WAY_K_COEFFICIENT = 5;		// 충돌 포함해서 셀 최대 횟수 (5 * K�
 double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
 double TO_GOAL_MAX_MARGIN= 0.6;		// 최종 목표지점 허용 오차.
 
-double LINEAR_COLLISION_MARGIN = 0.0;
-int MAX_CURVE_MARGIN = 4;
+double MIN_CURVE_MARGIN = 0.0;		// 실제 거리.
+double MAX_CURVE_MARGIN = 0.2;		// 실제 거리.
+
+double DIST_COLLISION_MARGIN_COEFFICIENT = 0.02; // margin per meter
 
 double dist_squared(point p1, point p2)
 {
@@ -575,11 +577,14 @@ bool rrtTree::isCollision(point x1, point x2, double d, double alpha) {
 	double xc = x1.x - R * sin(x1.th);
 	double yc = x1.y + R * cos(x1.th);
 	double alpha_magnitude = myabs(alpha)/MAX_ALPHA;
-	int collision_margin = (int)lerp(0, MAX_CURVE_MARGIN, alpha_magnitude);//0;//(CURVE_COLLISION_MARGIN / this->res) / R;
+
+	double offset = lerp(MIN_CURVE_MARGIN, MAX_CURVE_MARGIN, alpha_magnitude);//0;//(CURVE_COLLISION_MARGIN / this->res) / R;
 	
 
 	while(dist <= d)
 	{
+		int collision_margin = (int)((dist * DIST_COLLISION_MARGIN_COEFFICIENT + offset) / this->res);
+
 		double beta = dist / R;
 		
 		double x_prime = xc + R * sin(x1.th + beta);
@@ -602,10 +607,12 @@ bool rrtTree::isCollisionInLine(point x1, double d) {
 	double dist = 0;
 	double xc = x1.x ;
 	double yc = x1.y ;
-	int collision_margin = (int)(LINEAR_COLLISION_MARGIN / this->res);
+	
 	
 	while(dist <= d)
 	{
+		int collision_margin = (int)((dist * DIST_COLLISION_MARGIN_COEFFICIENT + MIN_CURVE_MARGIN) / this->res);
+
 		double x_prime = xc + dist * cos(x1.th);
 		double y_prime = yc + dist * sin(x1.th);
 		int i = (int)((x_prime / this->res) + this->map_origin_x);
@@ -626,10 +633,11 @@ double rrtTree::findMaxDinDirection(point x1) {
 	double dist = 0;
 	double xc = x1.x ;
 	double yc = x1.y ;
-	int collision_margin = (int) (LINEAR_COLLISION_MARGIN / this->res);
 	
 	while(true)
 	{
+		int collision_margin = (int)((dist * DIST_COLLISION_MARGIN_COEFFICIENT + MIN_CURVE_MARGIN) / this->res);
+
 		double x_prime = xc + dist * cos(x1.th);
 		double y_prime = yc + dist * sin(x1.th);
 		
