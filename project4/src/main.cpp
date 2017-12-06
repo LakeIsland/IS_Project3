@@ -33,13 +33,13 @@ double world_y_min;
 double world_y_max;
 
 //parameters we should adjust : K, margin, MaxStep
-int margin = 7;
+int margin = 6;
 int K = 1500;
 double MaxStep = 2;
 
 int waypoint_margin = 22;
-double CAR_TARGET_MAX_SPEED = 3;
-double CAR_TARGET_MIN_SPEED = 2;
+double CAR_TARGET_MAX_SPEED = 4.0;
+double CAR_TARGET_MIN_SPEED = 2.2;
 
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 200 * MAX_FAIL_NUMBER;
@@ -183,8 +183,9 @@ int main(int argc, char** argv){
 			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal, next_goal);
 
 			double abs_control = myabs(control);
-			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.16, CAR_TARGET_MIN_SPEED, abs_control);
+			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.18, CAR_TARGET_MIN_SPEED, abs_control);
 			//float speed = getExponentiallyInterpolatecValue(CAR_TARGET_MAX_SPEED, CAR_TARGET_MIN_SPEED, abs_control);
+			printf("speed : %.3f\n", speed);
 
 			//if(abs_control > steering_max)
 			//	steering_max = abs_control;
@@ -201,7 +202,7 @@ int main(int argc, char** argv){
 			if(dist_squared < DIST_SQUARE_TO_CHECK_REACHED || (last_dist_squared < dist_squared && dist_squared < 8))
 		    	{
 				if(!(dist_squared < DIST_SQUARE_TO_CHECK_REACHED)){
-					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
+					//printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
 					toofarcount++;
 				}
 		    		last_dist_squared = DOUBLE_INFINITE;
