@@ -42,7 +42,7 @@ double CAR_TARGET_MAX_SPEED = 3;
 double CAR_TARGET_MIN_SPEED = 2;
 
 int MAX_FAIL_NUMBER = 2;
-int ANY_WAY_RESTART_COUNT = 1000;
+int ANY_WAY_RESTART_COUNT = 200 * MAX_FAIL_NUMBER;
 
 double PER_BREAK_SEC = 2;
 double BREAK_SEC = 2;
@@ -183,7 +183,9 @@ int main(int argc, char** argv){
 			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal, next_goal);
 
 			double abs_control = myabs(control);
-			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.2, CAR_TARGET_MIN_SPEED, abs_control);
+			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.16, CAR_TARGET_MIN_SPEED, abs_control);
+			//float speed = getExponentiallyInterpolatecValue(CAR_TARGET_MAX_SPEED, CAR_TARGET_MIN_SPEED, abs_control);
+
 			//if(abs_control > steering_max)
 			//	steering_max = abs_control;
 			setcmdvel(speed, control);
