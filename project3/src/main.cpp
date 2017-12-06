@@ -254,7 +254,7 @@ int main(int argc, char** argv){
 				prev_goal = next_goal;
 		
 			float alpha = next_goal.alpha;
-			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal);
+			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal, next_goal);
 			double abs_control = myabs(control);
 			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.2, CAR_TARGET_MIN_SPEED, abs_control);
 			if(abs_control > steering_max)
