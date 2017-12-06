@@ -13,10 +13,10 @@ int ANY_WAY_K_COEFFICIENT = 5;		// 충돌 포함해서 셀 최대 횟수 (5 * K�
 double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
 double TO_GOAL_MAX_MARGIN= 0.6;		// 최종 목표지점 허용 오차.
 
-double MIN_CURVE_MARGIN = 0.0;		// 실제 거리.
+double MIN_CURVE_MARGIN = 0.02;		// 실제 거리.
 double MAX_CURVE_MARGIN = 0.2;		// 실제 거리.
 
-double DIST_COLLISION_MARGIN_COEFFICIENT = 0.02; // margin per meter
+double DIST_COLLISION_MARGIN_COEFFICIENT = 0.05; // margin per meter
 
 double dist_squared(point p1, point p2)
 {
