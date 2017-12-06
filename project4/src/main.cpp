@@ -33,13 +33,14 @@ double world_y_min;
 double world_y_max;
 
 //parameters we should adjust : K, margin, MaxStep
-int margin = 6;
+int margin = 7;
 int K = 1500;
 double MaxStep = 2;
 
 int waypoint_margin = 22;
 double CAR_TARGET_MAX_SPEED = 1;
 double CAR_TARGET_MIN_SPEED = 1;
+
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 1000;
 
@@ -47,8 +48,9 @@ double PER_BREAK_SEC = 2;
 double BREAK_SEC = 2;
 
 int CONTROL_RATE = 60;
-
 int TRACK_NUMBER = 2;
+
+double DIST_SQUARE_TO_CHECK_REACHED = 0.04;
 
 //way points
 std::vector<point> waypoints;
@@ -102,7 +104,7 @@ int main(int argc, char** argv){
         switch (state) {
         case INIT: {
             look_ahead_idx = 0;
-	    	printf("path size : %d\n", path_RRT.size());
+	    	printf("path size : %d\n", (int)path_RRT.size());
 
             // Load Map
             char* user = getpwuid(getuid())->pw_name;
@@ -164,16 +166,16 @@ int main(int argc, char** argv){
 				take_break_timer += 1;
 			}
 
-			traj next_goal = path_RRT.at(look_ahead_idx);
-			traj prev_goal; 
+			traj current_goal = path_RRT.at(look_ahead_idx);
+			traj next_goal; 
 
-			if(look_ahead_idx > 0)
-				prev_goal = path_RRT.at(look_ahead_idx - 1);
+			if(look_ahead_idx < path_RRT.size() - 1)
+				next_goal = path_RRT.at(look_ahead_idx + 1);
 			else
-				prev_goal = next_goal;
-		
-			float alpha = next_goal.alpha;
-			float control = pid_ctrl.get_control(robot_pose, prev_goal, next_goal);
+				next_goal = current_goal;
+
+			float control = pid_ctrl.get_control(robot_pose, current_goal, next_goal);
+
 			double abs_control = myabs(control);
 			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.2, CAR_TARGET_MIN_SPEED, abs_control);
 			//if(abs_control > steering_max)
@@ -184,13 +186,13 @@ int main(int argc, char** argv){
 		    	ros::spinOnce();
 	  	  	control_rate.sleep();
 		    	
-		    	double dx = robot_pose.x - next_goal.x;
-		    	double dy = robot_pose.y - next_goal.y;	    	
+		    	double dx = robot_pose.x - current_goal.x;
+		    	double dy = robot_pose.y - current_goal.y;	    	
 		    	double dist_squared = dx * dx + dy * dy;
 
-			if(dist_squared < 0.04 || (last_dist_squared < dist_squared && dist_squared < 8))
+			if(dist_squared < DIST_SQUARE_TO_CHECK_REACHED || (last_dist_squared < dist_squared && dist_squared < 8))
 		    	{
-				if(!(dist_squared < 0.04)){
+				if(!(dist_squared < DIST_SQUARE_TO_CHECK_REACHED)){
 					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
 					toofarcount++;
 				}
@@ -353,7 +355,7 @@ void create_clock_wise_way_points(cv::Mat map, point start_position)
 	waypoints.push_back(start_position);
 	for(int j=0; j<TRACK_NUMBER; j++)
 	{
-		for(int i=1; i<=4; i++)
+		for(int i=2; i<=4; i+=2)
 		{
 			if(i == 4 && j==TRACK_NUMBER-1){
 				waypoints.push_back(start_position);
