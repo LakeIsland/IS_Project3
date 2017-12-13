@@ -38,6 +38,13 @@ private:
 	double res;
 	node *ptrTable[20000];
 	bool is_finished_to_find_near_goal;
+	
+	bool must_go_outside;
+
+	int allowed_left_grid;
+	int allowed_right_grid;
+	int allowed_top_grid;
+	int allowed_bottom_grid;
 
 	cv::Mat addMargin(cv::Mat map, int margin);
 	void addVertex(point x_new, point x_rand, int idx_near, double alpha, double d);
@@ -73,6 +80,9 @@ public:
 	void visualizeTree(std::vector<traj> path);
 	int generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep);
 	std::vector<traj> backtracking_traj();
+
+	void set_must_go_outside(bool go_outside);
+	void set_allowed_meter(double l, double r, double t, double b);
 };
 
 

@@ -15,6 +15,7 @@ public:
 	void clear();
 private:
 	float error;
+	float error_last;
 	float error_sum;
 	float error_diff;
 	float Kp;

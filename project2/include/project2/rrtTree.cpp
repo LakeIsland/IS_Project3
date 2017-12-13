@@ -8,15 +8,20 @@ double MAX_D = 2;
 double MAX_ALPHA = 0.18;
 double L = 0.325;
 
-int RRT_DEBUG = 0;			// 디버그 출력 여부
+int RRT_DEBUG = 1;			// 디버그 출력 여부
 int ANY_WAY_K_COEFFICIENT = 5;		// 충돌 포함해서 셀 최대 횟수 (5 * K번)
 double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 고려할 마진 (0이면 너무 벽에 딱 붙음)
 double TO_GOAL_MAX_MARGIN= 0.6;		// 최종 목표지점 허용 오차.
 
-double MIN_CURVE_MARGIN = 0.02;		// 실제 거리.
-double MAX_CURVE_MARGIN = 0.2;		// 실제 거리.
+double MIN_CURVE_MARGIN = 0.01;		// 실제 거리.
+double MAX_CURVE_MARGIN = 0.08;		// 실제 거리.
 
-double DIST_COLLISION_MARGIN_COEFFICIENT = 0.05; // margin per meter
+double DIST_COLLISION_MARGIN_COEFFICIENT = 0.015; // margin per meter
+
+double FINAL_WAYPOINT_DIST = 0.5;	// 경로를 더 잘게 쪼갬.
+bool CONSTANT_DIST = false;			// 일정 길이로 쪼갤지 개수 기준으로 쪼갤지.
+bool DIVIDE_SMALLER = false;		// 경로를 더 잘게 쪼갤지 여부.
+	
 
 double dist_squared(point p1, point p2)
 {
@@ -199,10 +204,18 @@ void rrtTree::visualizeTree(std::vector<traj> path){
     cv::Mat imgResult;
     cv::cvtColor(this->map, map_c, CV_GRAY2BGR);
     cv::resize(map_c, imgResult, cv::Size(), Res, Res);
+	
+	for(int i=0; i<path.size() - 1;i++)
+	{
+		if( i ==0 || i == path.size() - 1)
+			cv::circle(imgResult, cv::Point((int)(Res*(path[i].y/res + map_origin_y)), (int)(Res*(path[i].x/res + map_origin_x))), radius, cv::Scalar(0, 0, 255), CV_FILLED);
+		else
+			//cv::drawMarker(imgResult, cv::Point((int)(Res*(path[i].y/res + map_origin_y)), (int)(Res*(path[i].x/res + map_origin_x))), cv::Scalar(255, 0, 0), cv::MARKER_CROSS, 5, 1, 8);
+		
+			cv::circle(imgResult, cv::Point((int)(Res*(path[i].y/res + map_origin_y)), (int)(Res*(path[i].x/res + map_origin_x))), radius, cv::Scalar(255, 0, 0), CV_FILLED);
 
-    cv::circle(imgResult, cv::Point((int)(Res*(path[0].y/res + map_origin_y)), (int)(Res*(path[0].x/res + map_origin_x))), radius, cv::Scalar(0, 0, 255), CV_FILLED);
-    cv::circle(imgResult, cv::Point((int)(Res*(path[path.size()-1].y/res + map_origin_y)), (int)(Res*(path[path.size()-1].x/res + map_origin_x))), radius, cv::Scalar(0, 0, 255), CV_FILLED);
-
+	}
+    
     for(int i = 1; i < this->count; i++) {
 		idx_parent = this->ptrTable[i]->idx_parent;
         double alpha = this->ptrTable[i]->alpha;
@@ -281,8 +294,11 @@ void rrtTree::visualizeTree(std::vector<traj> path){
     cv::waitKey(1);
 }
 
+
+
 void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, double d) {
     //TODO
+
     int new_index = this->count;
     
     node* new_node = new node();
@@ -321,18 +337,18 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
 	double min_dist_squared_to_goal = DOUBLE_INFINITE;
 	addRandomLinearPathToLastNode();
-	addMaxLinearPathToLastNode();
+	//addMaxLinearPathToLastNode();
 
     while(this->count < K && anyway_count_i <ANY_WAY_COUNT_MAX && !(this->is_finished_to_find_near_goal))
     {
 		
-		anyway_count_i++;
+	anyway_count_i++;
 
     	point x_rand = randomState(x_max, x_min, y_max, y_min);
 
     	int x_near_idx = nearestNeighbor(x_rand, MAX_D);
 
-		if(x_near_idx == -1)	continue;
+	if(x_near_idx == -1)	continue;
 		
     	node *x_near_node = this->ptrTable[x_near_idx];
     	point x_near = x_near_node -> location;
@@ -355,7 +371,7 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 	check_near_goal_point();
 
 	addRandomLinearPathToLastNode();
-	addMaxLinearPathToLastNode();
+	//addMaxLinearPathToLastNode();
 
     }
 	if(this->is_finished_to_find_near_goal)
@@ -505,6 +521,35 @@ int rrtTree::nearestNeighbor(point x_rand) {
     }
     
     return min_dist_node_index;
+}
+
+point calc_new_point(point start_point, double d, double alpha)
+{
+	point _point;
+
+	if(alpha == 0)
+	{
+		_point.x = start_point.x + d * cos(start_point.th);
+		_point.y = start_point.y + d * sin(start_point.th);
+		_point.th = start_point.th;
+	}
+	else
+	{
+		double R = L / tan(alpha);
+		double xc = start_point.x - R * sin(start_point.th);
+		double yc = start_point.y + R * cos(start_point.th);
+	
+		double beta = (d / R);
+		double x_prime = xc + R * sin(start_point.th + beta);
+		double y_prime = yc - R * cos(start_point.th + beta);
+		double th_prime = start_point.th + beta;
+		_point.x = x_prime;
+		_point.y = y_prime;
+		_point.th = th_prime;
+	
+	}
+
+	return _point;
 }
 
 int rrtTree::newState(double *out, point x_near, point x_rand, double MaxStep) {
@@ -672,11 +717,14 @@ bool rrtTree::isCollidedWithMargin(int x, int y, int radius)
 			if ((i) * (i) + (j)* (j) > radius_squared )
 				continue;
 
-			int occupied = this->map.at<uchar>(i + x, j + y);
-			if(occupied <= 125)
-			{
+			if(isObstacleAt(i+x,j+y))
 				return true;
-			}
+
+			//int occupied = this->map.at<uchar>(i + x, j + y);
+			//if(occupied <= 125)
+			//{
+			//	return true;
+			//}
 		}
 		
 	}
@@ -685,8 +733,17 @@ bool rrtTree::isCollidedWithMargin(int x, int y, int radius)
 
 bool rrtTree::isObstacleAt(int x, int y)
 {
-	if(x < 0 || x >= this->map.rows||y < 0|| y >=this->map.cols)
+	if(x < 0 || x >= this->map.rows||y < 0|| y >= this->map.cols)
 		return true;
+
+	if(this->must_go_outside)
+	{
+		if(x > this->allowed_left_grid 
+		&& x < this->map.rows - this->allowed_right_grid 
+		&& y > this->allowed_top_grid
+		&& y < this->map.cols - this->allowed_bottom_grid)
+		return true; 
+	}
 	int occupied = this->map.at<uchar>(x, y);
 	if(occupied <= 125)
 	{
@@ -717,15 +774,72 @@ std::vector<traj> rrtTree::backtracking_traj(){
     	
     	double alpha = cur_node->alpha;
     	double d = cur_node->d;
-    	
-    	traj _traj;
-    	_traj.x = cur_point.x;
-    	_traj.y = cur_point.y;
-    	_traj.th = cur_point.th;
-    	_traj.d = d;
-    	_traj.alpha = alpha;
-    	
-    	total_traj.push_back(_traj);
+
+		if(!DIVIDE_SMALLER)
+		{
+			traj _traj;
+			_traj.x = cur_point.x;
+			_traj.y = cur_point.y;
+			_traj.th = cur_point.th;
+			_traj.d = d;
+			_traj.alpha = alpha;
+		
+			total_traj.push_back(_traj);
+		}
+
+		else
+		{
+		if(CONSTANT_DIST)
+		{
+			double accum_dist = 0;
+			double left_amount = d;
+
+			while(accum_dist < d)
+			{
+				point _point = calc_new_point(cur_point, -accum_dist, alpha);
+				
+				traj _traj;
+				_traj.x = _point.x;
+				_traj.y = _point.y;
+				_traj.th = _point.th;
+				_traj.d = FINAL_WAYPOINT_DIST < left_amount ? FINAL_WAYPOINT_DIST : left_amount ;
+				_traj.alpha = alpha;
+
+				accum_dist += FINAL_WAYPOINT_DIST;
+				left_amount -= FINAL_WAYPOINT_DIST;
+			
+				total_traj.push_back(_traj);
+			}
+
+		}
+		else
+		{
+			int count = 1;
+			while(true)
+			{
+				if(d / count < FINAL_WAYPOINT_DIST)
+					break;
+				count += 1;
+			}
+			double unit_dist = d / count;
+			double accum_dist = 0;
+			for(int i=0; i<count;i++)
+			{
+				point _point = calc_new_point(cur_point, -accum_dist, alpha);
+				
+				traj _traj;
+				_traj.x = _point.x;
+				_traj.y = _point.y;
+				_traj.th = _point.th;
+				_traj.d = unit_dist;
+				_traj.alpha = alpha;
+			
+				total_traj.push_back(_traj);
+				accum_dist += unit_dist;
+			}
+		}
+
+		}
 		
 		//if(current_index == 0)
 		//	break;
@@ -736,3 +850,22 @@ std::vector<traj> rrtTree::backtracking_traj(){
     return total_traj;
     
 }
+
+void rrtTree::set_must_go_outside(bool go_outside)
+{
+	if(go_outside)
+	printf("Forced to go out side!\n");
+	else
+	printf("Not go out side!\n");
+	
+	this->must_go_outside = go_outside;
+}
+
+void rrtTree::set_allowed_meter(double l, double r, double t, double b)
+{
+	this-> allowed_left_grid = (int)(l/this->res);
+	this-> allowed_right_grid = (int)(r/this->res);
+	this-> allowed_top_grid = (int)(t/this->res);
+	this-> allowed_bottom_grid = (int)(b/this->res);
+}
+
