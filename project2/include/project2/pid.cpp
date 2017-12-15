@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define THRESHOLD_R 0.3
-#define THRESHOLD_MAX_R 0.8
+#define THRESHOLD_MAX_R 0.6
 
 #define MAX_ROTATE 0.75
 #define I_MAX 1.5
@@ -22,7 +22,7 @@ PID::PID(){
     error_diff = 0;
     Kp = 1;
     Ki = 0;
-    Kd = 0.5; 
+    Kd = 0; 
 }
 
 void PID::clear()
@@ -136,7 +136,7 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal, traj next_
 	
 	//printf("final_result, %.3f, result :%.3f, alpha: %.3f\n", final_result, result, cur_goal.alpha);
 	//if(myabs(result) > MAX_ROTATE)
-	printf("car : (%.3f, %.3f), dest : (%.3f, %.3f), theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",car_pose.x,car_pose.y,cur_goal.x, cur_goal.y,theta_g,theta_h,error,result);
+	//printf("car : (%.3f, %.3f), dest : (%.3f, %.3f), theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",car_pose.x,car_pose.y,cur_goal.x, cur_goal.y,theta_g,theta_h,error,result);
 	
 	//printf("dx: %.3f, dy: %.3f, theta: %.3f, car th: %.3f , error : %.3f, result %.3f\n",dx,dy,theta_g,theta_h,error,result);
 		
