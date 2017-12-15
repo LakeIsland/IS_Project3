@@ -38,8 +38,8 @@ int K = 1500;
 double MaxStep = 2;
 
 int waypoint_margin = 22;
-double CAR_TARGET_MAX_SPEED = 2;
-double CAR_TARGET_MIN_SPEED = 2;
+double CAR_TARGET_MAX_SPEED = 2.2;
+double CAR_TARGET_MIN_SPEED = 2.2;
 
 int MAX_FAIL_NUMBER = 2;
 int ANY_WAY_RESTART_COUNT = 200 * MAX_FAIL_NUMBER;
@@ -271,9 +271,9 @@ void callback_state(geometry_msgs::PoseWithCovarianceStampedConstPtr msgs){
 void finish()
 {
 	time2 = clock();					
-	clock_t runtime = (time2-time1) / CLOCKS_PER_SEC;					
+	double runtime = ((double)(time2-time1)) / CLOCKS_PER_SEC;					
 	printf("Finished ROBOT\n");
-	printf("Running time = %ld\n", runtime);
+	printf("Running time = %.3f sec\n", runtime);
 	state = FINISH;
 }
 
