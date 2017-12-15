@@ -48,7 +48,7 @@ int CONTROL_RATE = 60;
 int TRACK_NUMBER = 1;
 double BREAK_SEC = 2;
 
-double DIST_SQUARE_TO_CHECK_REACHED = 0.01;
+double DIST_SQUARE_TO_CHECK_REACHED = 0.09;
 
 double ALLOWED_LEFT = 	2.5;
 double ALLOWED_RIGHT = 	2.5;
@@ -84,6 +84,8 @@ void set_random_point();
 
 PID pid_ctrl;
 double last_dist_squared = DOUBLE_INFINITE;
+
+double rrt_sec;
 
 int outside_allowed_waypoint_index;
 
@@ -145,8 +147,11 @@ int main(int argc, char** argv){
             printf("Set way points\n");
 
             // RRT
+            time1 = clock();
             generate_path_RRT();
-            printf("Generate RRT\n");
+            time2 = clock();
+            rrt_sec = (((double)(time2 - time1)) / CLOCKS_PER_SEC);
+            printf("Generate RRT in %.3f sec.\n", rrt_sec);
 
             ros::spinOnce();
             ros::Rate(0.33).sleep();
@@ -155,11 +160,13 @@ int main(int argc, char** argv){
             state = RUNNING;
 
         case RUNNING: {
-                //TODO 1
+        //TODO 1
 		int toofarcount = 0;
-		double steering_max = 0;
+		//double steering_max = 0;
 		//take_break(control_rate, cmd_vel_pub);
-
+		look_ahead_idx = 1;
+		
+		time1 = clock();
 	    while(ros::ok()) {
 
 			traj current_goal = path_RRT.at(look_ahead_idx);
@@ -178,6 +185,7 @@ int main(int argc, char** argv){
 
 			float control = pid_ctrl.get_control(robot_pose, prev_goal, current_goal, next_goal);
 
+			
 			double abs_control = myabs(control);
 			float speed = getLinearlyInterpolatedValue(0, CAR_TARGET_MAX_SPEED, 0.18, CAR_TARGET_MIN_SPEED, abs_control);
 			//float speed = getExponentiallyInterpolatecValue(CAR_TARGET_MAX_SPEED, CAR_TARGET_MIN_SPEED, abs_control);			
@@ -186,16 +194,16 @@ int main(int argc, char** argv){
 			//if(abs_control > steering_max)
 			//	steering_max = abs_control;
 			setcmdvel(speed, control);
-		    	cmd_vel_pub.publish(cmd);
+		    cmd_vel_pub.publish(cmd);
 		    	
-		    	ros::spinOnce();
+		    ros::spinOnce();
 	  	  	control_rate.sleep();
 		    	
-		    	double dx = robot_pose.x - current_goal.x;
-		    	double dy = robot_pose.y - current_goal.y;	    	
-		    	double dist_squared = dx * dx + dy * dy;
+		    double dx = robot_pose.x - current_goal.x;
+		    double dy = robot_pose.y - current_goal.y;	    	
+		    double dist_squared = dx * dx + dy * dy;
 
-			if(dist_squared < DIST_SQUARE_TO_CHECK_REACHED || (last_dist_squared < dist_squared && dist_squared < 4))
+			if(dist_squared < DIST_SQUARE_TO_CHECK_REACHED || (last_dist_squared < dist_squared && dist_squared < 2))
 		    	{
 				if(!(dist_squared < DIST_SQUARE_TO_CHECK_REACHED)){
 					printf("PASSED!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -263,9 +271,8 @@ void callback_state(geometry_msgs::PoseWithCovarianceStampedConstPtr msgs){
 void finish()
 {
 	time2 = clock();					
-	clock_t runtime = (time2-time1) / 10000;					
+	clock_t runtime = (time2-time1) / CLOCKS_PER_SEC;					
 	printf("Finished ROBOT\n");
-
 	printf("Running time = %ld\n", runtime);
 	state = FINISH;
 }
@@ -319,7 +326,7 @@ void create_clock_wise_way_points(cv::Mat map, point start_position)
 	waypoints.push_back(start_position);
 	for(int j=0; j<TRACK_NUMBER; j++)
 	{
-		for(int i=2; i<=4; i+=2)
+		for(int i=1; i<=4; i+=1)
 		{
 			if(i == 4 && j==TRACK_NUMBER-1){
 				waypoints.push_back(start_position);
@@ -421,51 +428,72 @@ void generate_path_RRT()
      * 4.  when you store path, you have to reverse the order of points in the generated path since BACKTRACKING makes a path in a reverse order (goal -> start).
      * 5. end
      */
+     
+    // set random
 	std::srand(std::time(NULL));
+	
+	// set start point
 	point start_point;
-
 	start_point.x = -3.5;
 	start_point.y = 8.5;
 
+	// set map.
 	cv::Mat map_margin = map.clone();
 	int jSize = map.cols; // the number of columns
 	int iSize = map.rows; // the number of rows
 
+	
+	// initialize map with margin
 	for (int i = 0; i < iSize; i++) {
-	for (int j = 0; j < jSize; j++) {
-	    if (map.at<uchar>(i, j) < 125) {
-		for (int k = i - waypoint_margin; k <= i + waypoint_margin; k++) {
-		    for (int l = j - waypoint_margin; l <= j + waypoint_margin; l++) {
-		        if (k >= 0 && l >= 0 && k < iSize && l < jSize) {
-		            map_margin.at<uchar>(k, l) = 0;
-		        }
-		    }
+		for (int j = 0; j < jSize; j++) {
+			if (map.at<uchar>(i, j) < 125) {
+				for (int k = i - waypoint_margin; k <= i + waypoint_margin; k++) {
+					for (int l = j - waypoint_margin; l <= j + waypoint_margin; l++) {
+						if (k >= 0 && l >= 0 && k < iSize && l < jSize) {
+						    map_margin.at<uchar>(k, l) = 0;
+						}
+					}
+				}
+			}
 		}
-	    }
-	}
 	}
 
+	// create single rrt Tree. this will be reused.
 	rrtTree* _rrtTree = new rrtTree(map, map_origin_x, map_origin_y, res, margin);
 	std::vector<int> track_sizes;
 	
+	
+	// find path.
 	while(true)
 	{
+	
+		// firstly create clock wise way points.
 		create_clock_wise_way_points(map_margin, start_point);
-
+		
+		
+		// clear path.
 		path_RRT.clear();
 		track_sizes.clear();
-
 		int goal_number = waypoints.size();
 		int anyway_fail_number = 0;
+		
+		// set first point
 		point x_init;
 		x_init.x = waypoints[0].x;
 		x_init.y = waypoints[0].y;
 		x_init.th = waypoints[0].th;
-
 		
+		traj init_traj;
+		init_traj.x = x_init.x;
+		init_traj.y = x_init.y;
+		path_RRT.push_back( init_traj );
+
+		// start finding path to next node.
+		
+		// next node index
 		int i = 1;
 
-		while(i<goal_number)
+		while(i < goal_number)
 		{
 			if(i >= outside_allowed_waypoint_index)
 			{
@@ -476,9 +504,11 @@ void generate_path_RRT()
 			}
 
 			printf("start Finding %d th path.\n", i);
-
+			
+			// next goal point
 			point x_goal = waypoints[i];
 			
+			// now start to find a path to next goal point.
 			int current_fail_number = 0;
 			while(i==1 || current_fail_number < MAX_FAIL_NUMBER)
 			{
@@ -536,7 +566,7 @@ void generate_path_RRT()
 					x_init.y = last_traj.y;
 					x_init.th = last_traj.th;
 					printf("BACK ONE TRACK!!!!!!!!!!! \n");
-						
+					
 					continue;
 				}
 
@@ -546,7 +576,7 @@ void generate_path_RRT()
 				
 		}
 
-		if(i==goal_number)
+		if(i == goal_number)
 			break;
 	}
 
