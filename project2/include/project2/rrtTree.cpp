@@ -14,13 +14,16 @@ double DIRECTION_SEARCH_MARGIN = 1;	// 직선경로 탐색에서 마지막에 �
 double TO_GOAL_MAX_MARGIN= 0.6;		// 최종 목표지점 허용 오차.
 
 double MIN_CURVE_MARGIN = 0.01;		// 실제 거리.
-double MAX_CURVE_MARGIN = 0.08;		// 실제 거리.
+double MAX_CURVE_MARGIN = 0.03;		// 실제 거리.
 
 double DIST_COLLISION_MARGIN_COEFFICIENT = 0.015; // margin per meter
 
-double FINAL_WAYPOINT_DIST = 0.5;	// 경로를 더 잘게 쪼갬.
-bool CONSTANT_DIST = false;			// 일정 길이로 쪼갤지 개수 기준으로 쪼갤지.
+double FINAL_WAYPOINT_DIST = 0.4;	// 경로를 더 잘게 쪼갬.
+bool CONSTANT_DIST = false;		// 일정 길이로 쪼갤지 개수 기준으로 쪼갤지.
 bool DIVIDE_SMALLER = false;		// 경로를 더 잘게 쪼갤지 여부.
+
+
+double FEW_METER_NEAR_GOAL = 5;		// 최종 점 근처에서 찾기 시작할 거리.
 	
 
 double dist_squared(point p1, point p2)
@@ -115,6 +118,7 @@ void rrtTree::setNewPoint(point x_init, point x_goal)
     root->d = 0;
 
 	this->is_finished_to_find_near_goal = false;
+	this->is_near_goal_in_few_meters = false;
 }
 
 
@@ -321,9 +325,19 @@ void rrtTree::addVertex(point x_new, point x_rand, int idx_near, double alpha, d
 void rrtTree::check_near_goal_point()
 {
 	point x_new = this->ptrTable[this->count - 1]->location;
-	if(dist(x_new, x_goal) < TO_GOAL_MAX_MARGIN)
+	double dist_to_goal = dist(x_new, x_goal);
+	
+	this->is_finished_to_find_near_goal = false;
+	this->is_near_goal_in_few_meters = false;
+	
+	if(dist_to_goal < TO_GOAL_MAX_MARGIN)
 	{
 		this->is_finished_to_find_near_goal = true;
+	}
+		
+	else if(dist_to_goal < FEW_METER_NEAR_GOAL)
+	{
+		this->is_near_goal_in_few_meters = true;
 	}
 }
 
@@ -342,38 +356,53 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
     while(this->count < K && anyway_count_i <ANY_WAY_COUNT_MAX && !(this->is_finished_to_find_near_goal))
     {
 		
-	anyway_count_i++;
+		anyway_count_i++;
 
     	point x_rand = randomState(x_max, x_min, y_max, y_min);
-
+    	
+    	
+    	// if close enough find a random point near the goal.
+		if(this->is_near_goal_in_few_meters && getRandomDouble() < 0.7)
+		{
+			x_rand.x = lerp(x_rand.x, x_goal.x, 0.5);
+			x_rand.y = lerp(x_rand.y, x_goal.y, 0.5);
+		}
+		
+		// find nearest neighbor
     	int x_near_idx = nearestNeighbor(x_rand, MAX_D);
 
-	if(x_near_idx == -1)	continue;
+		// if cannot find neighbor, continue.
+		if(x_near_idx == -1)	continue;
 		
+
     	node *x_near_node = this->ptrTable[x_near_idx];
     	point x_near = x_near_node -> location;
-    	
-    	int valid = newState(out, x_near, x_rand, MAX_D);
-    	
 
+    	
+    	int valid = newState(out, x_near, x_rand, MAX_D);    	
+    	
     	if(valid == 0){
-		continue;
+			continue;
 		}
 
-	if(this->count % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",this->count);}
-
+		if(this->count % 500 == 0){if(RRT_DEBUG)printf("%d !!!\n",this->count);}
+		
+		
+		// add new point
     	point x_new;
     	x_new.x = out[0];
     	x_new.y = out[1];
     	x_new.th = out[2];
     	
-	addVertex(x_new, x_rand, x_near_idx, out[3], out[4]);
-	check_near_goal_point();
+		addVertex(x_new, x_rand, x_near_idx, out[3], out[4]);
+		check_near_goal_point();
 
-	addRandomLinearPathToLastNode();
-	//addMaxLinearPathToLastNode();
+		// add random lines.
+		addRandomLinearPathToLastNode();
+		//addMaxLinearPathToLastNode();
 
     }
+    
 	if(this->is_finished_to_find_near_goal)
 	{
 		if(RRT_DEBUG)printf("FIND PATH in %d steps.\n", this->count);

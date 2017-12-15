@@ -37,7 +37,10 @@ private:
 	double map_origin_x, map_origin_y;
 	double res;
 	node *ptrTable[20000];
+
 	bool is_finished_to_find_near_goal;
+	bool is_near_goal_in_few_meters;
+	
 	
 	bool must_go_outside;
 

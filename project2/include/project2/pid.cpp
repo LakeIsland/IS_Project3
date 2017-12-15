@@ -2,10 +2,10 @@
 #include <math.h>
 #include <stdio.h>
 
-#define THRESHOLD_R 0.2
-#define THRESHOLD_MAX_R 0.6
+#define THRESHOLD_R 0.3
+#define THRESHOLD_MAX_R 0.8
 
-#define MAX_ROTATE 1
+#define MAX_ROTATE 0.75
 #define I_MAX 1.5
 #define I_MIN -1.5
 
@@ -22,7 +22,7 @@ PID::PID(){
     error_diff = 0;
     Kp = 1;
     Ki = 0;
-    Kd = 0; 
+    Kd = 0.5; 
 }
 
 void PID::clear()
@@ -36,8 +36,17 @@ void PID::clear()
 
 float PID::get_control(point car_pose, traj prev_goal, traj cur_goal, traj next_goal) {
     	//TODO
+
+	double goal_dx = cur_goal.x - prev_goal.x;
+	double goal_dy = cur_goal.y - prev_goal.y;
+	double goal_dth = atan2(goal_dy, goal_dx);
+	
+
 	double dx = cur_goal.x - car_pose.x;
 	double dy = cur_goal.y - car_pose.y;
+
+	double dx_prev = car_pose.x - prev_goal.x;
+	double dy_prev = car_pose.y - prev_goal.y;
 
 	double dx2 = next_goal.x - car_pose.x;
 	double dy2 = next_goal.y - car_pose.y;
@@ -49,28 +58,37 @@ float PID::get_control(point car_pose, traj prev_goal, traj cur_goal, traj next_
 	double theta_h = car_pose.th;
 
 	double distance = sqrt(dx * dx + dy * dy);
-	
+	double distance_prev = sqrt(dx_prev * dx_prev + dy_prev * dy_prev);
+
+	double cur_prev_rate = distance_prev / (distance + distance_prev);
+
+	double goal_th_mixed = lerp(clampToPi(prev_goal.th - car_pose.th), clampToPi(cur_goal.th - car_pose.th), cur_prev_rate);
+
 	// max radius -> distance that start to be affected by pre defined theta.
 	double max_radius = THRESHOLD_MAX_R;
 	
 	// linearly interpolate clamped value(function of distance)
-	double clamped_value = (distance - THRESHOLD_R) / (max_radius - THRESHOLD_R);
-	clamped_value = clamp(0,1,clamped_value);
-
-	// set weight from this clamped value.
+	double one_when_close = (max_radius - distance) / (max_radius - THRESHOLD_R);
+	one_when_close = clamp(0,1,one_when_close);
 	
-	double weight_g = clamped_value;
-	double weight_d = 1.0 - weight_g;
-
+	double mixed_x = lerp(cur_goal.x, next_goal.x, one_when_close);
+	double mixed_y = lerp(cur_goal.y, next_goal.y, one_when_close);
+	double mdx = mixed_x - car_pose.x;
+	double mdy = mixed_y - car_pose.y;
+	double theta_mixed = atan2(mdy,mdx);
+	
 	//if(weight_g < 1.0f)
 	//	printf("weight_g: %.4f, weight_d: %.4f\n", weight_g, weight_d);
 
 	double dt = 1.0 / 60;
 
-	double error = weight_g * theta_g + weight_d * theta_d - theta_h;
-
+	//double error = weight_g * theta_g + weight_d * theta_d - theta_h;
+	//double error = lerp(goal_th_mixed,theta_g,0) - theta_h;
 	//double error = lerp(theta_g, theta_g2, clamped_value) - theta_h;
 	//double error = theta_g - theta_h;
+	double error = lerp_theta(theta_g, theta_d, one_when_close) - theta_h;
+	
+	//double error = lerp(theta_g, theta_d, one_when_close) - theta_h;
 	error = clampToPi(error);
 
 

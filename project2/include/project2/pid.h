@@ -21,4 +21,5 @@ private:
 	float Kp;
 	float Ki;
 	float Kd;
+	float result_prev;
 };

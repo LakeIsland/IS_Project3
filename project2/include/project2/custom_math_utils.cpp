@@ -11,6 +11,20 @@ double lerp(double a, double b, double bpart)
 	return a + (b - a) * bpart;
 }
 
+double lerp_theta(double a, double b, double bpart)
+{
+	double ax = cos(a);
+	double ay = sin(a);
+	
+	double bx = cos(b);
+	double by = sin(b);
+	
+	double nx = lerp(ax, bx, bpart);
+	double ny = lerp(ay, by, bpart);
+	
+	return atan2(ny, nx);
+}
+
 double clamp(double min, double max, double x)
 {
 	if(x > max)
